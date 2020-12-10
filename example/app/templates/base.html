@@ -1,4 +1,4 @@
-{% load i18n staticfiles %}
+{% load i18n static %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -28,7 +28,7 @@
                     <li class="nav-item"><a class="nav-link" href="{% url 'logout' %}"><i class="fa fa-times" aria-hidden="true"></i> {% trans 'Logout' %}</a></li>
                     {% else %}
                     <li class="nav-item"><a class="nav-link" href="{% url 'login' %}"><i class="fa fa-sign-in" aria-hidden="true"></i> {% trans 'Login' %}</a></li>
-                    <li class="nav-item"><a class="nav-link" href="https://github.com/juanifioren/django-oidc-provider" target="_blank"><i class="fa fa-github-alt"></i> {% trans 'View on Github' %}</a></li>
+                    <li class="nav-item"><a class="nav-link" href="https://github.com/senzil/senzil-django-oidc-provider" target="_blank"><i class="fa fa-github-alt"></i> {% trans 'View on Github' %}</a></li>
                     {% endif %}
                 </ul>
             </form>
