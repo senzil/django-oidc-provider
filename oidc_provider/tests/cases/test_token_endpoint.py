@@ -28,7 +28,10 @@ from mock import patch
 
 from oidc_provider.lib.endpoints.introspection import INTROSPECTION_SCOPE
 from oidc_provider.lib.utils.oauth2 import protected_resource_view
-from oidc_provider.lib.utils.token import create_code
+from oidc_provider.lib.utils.token import (
+    create_code,
+    get_access_token_from_request
+)
 from oidc_provider.models import Token
 from oidc_provider.tests.app.utils import (
     create_fake_user,
@@ -242,7 +245,12 @@ class TokenTestCase(TestCase):
             response_dict['id_token'].encode('utf-8'), self._get_keys())
 
         token = Token.objects.get(user=self.user)
-        self.assertEqual(response_dict['access_token'], token.access_token)
+
+        response_dict_access_token = get_access_token_from_request(
+            access_token=response_dict['access_token'],
+            client=self.client)
+
+        self.assertEqual(response_dict_access_token, token.access_token)
         self.assertEqual(response_dict['refresh_token'], token.refresh_token)
         self.assertEqual(response_dict['expires_in'], 120)
         self.assertEqual(response_dict['token_type'], 'bearer')
@@ -250,7 +258,7 @@ class TokenTestCase(TestCase):
         self.assertEqual(id_token['aud'], self.client.client_id)
 
         # Check the scope is honored by checking the claims in the userinfo
-        userinfo_response = self._get_userinfo(response_dict['access_token'])
+        userinfo_response = self._get_userinfo(response_dict_access_token)
         userinfo = json.loads(userinfo_response.content.decode('utf-8'))
 
         for (scope_param, claim) in [('email', 'email'), ('profile', 'name')]:
@@ -283,15 +291,20 @@ class TokenTestCase(TestCase):
         post_data = self._auth_code_post_data(code=code.code)
 
         response = self._post_request(post_data)
-        response_dic = json.loads(response.content.decode('utf-8'))
+        response_dict = json.loads(response.content.decode('utf-8'))
 
-        id_token = JWS().verify_compact(response_dic['id_token'].encode('utf-8'), SIGKEYS)
+        id_token = JWS().verify_compact(response_dict['id_token'].encode('utf-8'), SIGKEYS)
 
         token = Token.objects.get(user=self.user)
-        self.assertEqual(response_dic['access_token'], token.access_token)
-        self.assertEqual(response_dic['refresh_token'], token.refresh_token)
-        self.assertEqual(response_dic['token_type'], 'bearer')
-        self.assertEqual(response_dic['expires_in'], 720)
+
+        response_dict_access_token = get_access_token_from_request(
+            access_token=response_dict['access_token'],
+            client=self.client)
+
+        self.assertEqual(response_dict_access_token, token.access_token)
+        self.assertEqual(response_dict['refresh_token'], token.refresh_token)
+        self.assertEqual(response_dict['token_type'], 'bearer')
+        self.assertEqual(response_dict['expires_in'], 720)
         self.assertEqual(id_token['sub'], str(self.user.id))
         self.assertEqual(id_token['aud'], self.client.client_id)
 
@@ -395,8 +408,16 @@ class TokenTestCase(TestCase):
             # but the refresh request had no email in scope
             self.assertNotIn('email', id_token2, 'email was not requested')
 
+        response_dic1_access_token = get_access_token_from_request(
+            access_token=response_dic1['access_token'],
+            client=self.client)
+
+        response_dic2_access_token = get_access_token_from_request(
+            access_token=response_dic2['access_token'],
+            client=self.client)
+
         self.assertNotEqual(response_dic1['id_token'], response_dic2['id_token'])
-        self.assertNotEqual(response_dic1['access_token'], response_dic2['access_token'])
+        self.assertNotEqual(response_dic1_access_token, response_dic2_access_token)
         self.assertNotEqual(response_dic1['refresh_token'], response_dic2['refresh_token'])
 
         # http://openid.net/specs/openid-connect-core-1_0.html#rfc.section.12.2
@@ -415,8 +436,8 @@ class TokenTestCase(TestCase):
         self.assertIn('invalid_grant', response.content.decode('utf-8'))
 
         # Old access token is invalidated
-        self.assertEqual(self._get_userinfo(response_dic1['access_token']).status_code, 401)
-        self.assertEqual(self._get_userinfo(response_dic2['access_token']).status_code, 200)
+        self.assertEqual(self._get_userinfo(response_dic1_access_token).status_code, 401)
+        self.assertEqual(self._get_userinfo(response_dic2_access_token).status_code, 200)
 
         # Empty refresh token is invalid
         post_data = self._refresh_token_post_data('')
@@ -810,7 +831,9 @@ class TokenTestCase(TestCase):
         self.assertTrue('access_token' in response_dict)
         self.assertEqual(' '.join(fake_scopes_list), response_dict['scope'])
 
-        access_token = response_dict['access_token']
+        access_token = get_access_token_from_request(
+            access_token=response_dict['access_token'],
+            client=self.client)
 
         # Create a protected resource and test the access_token.
 
@@ -864,5 +887,10 @@ class TokenTestCase(TestCase):
         }
         response = self._post_request(post_data)
         response_dict = json.loads(response.content.decode('utf-8'))
-        token = Token.objects.get(access_token=response_dict['access_token'])
+
+        access_token = get_access_token_from_request(
+            access_token=response_dict['access_token'],
+            client=self.client)
+
+        token = Token.objects.get(access_token=access_token)
         self.assertTrue(str(token))

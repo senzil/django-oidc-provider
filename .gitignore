@@ -110,3 +110,5 @@ media/
 # ides
 .idea
 *.code-workspace
+
+.pytest_cache/

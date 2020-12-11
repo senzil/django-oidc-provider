@@ -169,14 +169,25 @@ class DefaultSettings(object):
         }
 
     @property
-    def OIDC_TOKEN_RESPONSE_FORMAT(self):
+    def OIDC_ACCESS_TOKEN_ENCODE(self):
         """
         OPTIONAL. A string with the location of your function.
         Used to generate access_token. The default value, generate a JWT output for access_token.
-        If OIDC_TOKEN_RESPONSE_FORMAT is None, the OIDC return access_token without format (uuid.uuid4().hex).
+        If OIDC_ACCESS_TOKEN_ENCODE is None,
+        the OIDC return access_token without format (uuid.uuid4().hex).
         """
-        return 'oidc_provider.lib.utils.token.encode_token_jwt'
-    
+        return 'oidc_provider.lib.utils.token.encode_access_token_jwt'
+
+    @property
+    def OIDC_ACCESS_TOKEN_DECODE(self):
+        """
+        OPTIONAL. A string with the location of your function.
+        Used to decode access_token. The default value, decode a JWT
+        and return only the access_token stored in the JWT Payload.
+        If OIDC_ACCESS_TOKEN_DECODE is None, the OIDC won't aply any decode to access_token
+        """
+        return 'oidc_provider.lib.utils.token.decode_access_token_jwt'
+
     @property
     def OIDC_TOKEN_JWT_AUD(self):
         """
@@ -184,6 +195,7 @@ class DefaultSettings(object):
         Used to populate aud field into payload dict in case that you choice a jwt token response.
         """
         return 'oidc_provider.lib.utils.common.default_aud'
+
 
 default_settings = DefaultSettings()
 

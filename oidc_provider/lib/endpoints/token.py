@@ -15,6 +15,7 @@ from oidc_provider.lib.utils.token import (
     create_id_token,
     create_token,
     encode_jwt,
+    access_token_format,
 )
 from oidc_provider.models import (
     Client,
@@ -173,9 +174,11 @@ class TokenEndpoint(object):
         # We don't need to store the code anymore.
         self.code.delete()
 
-        access_token = access_token_format(self, 
-            token=token, 
-            user=self.code.user)
+        access_token = access_token_format(
+            token=token,
+            user=self.code.user,
+            client=self.client,
+            request=self.request)
 
         dic = {
             'access_token': access_token,
@@ -222,9 +225,11 @@ class TokenEndpoint(object):
         # Forget the old token.
         self.token.delete()
 
-        access_token = access_token_format(self, 
-            token=token, 
-            user=self.token.user)
+        access_token = access_token_format(
+            token=token,
+            user=self.token.user,
+            client=self.client,
+            request=self.request)
 
         dic = {
             'access_token': access_token,
@@ -257,9 +262,11 @@ class TokenEndpoint(object):
         token.id_token = id_token_dic
         token.save()
 
-        access_token = access_token_format(self, 
-            token=token, 
-            user=self.user)
+        access_token = access_token_format(
+            token=token,
+            user=self.user,
+            client=self.client,
+            request=self.request)
 
         return {
             'access_token': access_token,
@@ -279,7 +286,10 @@ class TokenEndpoint(object):
 
         token.save()
 
-        access_token = self.access_token_format(token=token)
+        access_token = access_token_format(
+            token=token,
+            client=self.client,
+            request=self.request)
 
         return {
             'access_token': access_token,
@@ -287,16 +297,6 @@ class TokenEndpoint(object):
             'token_type': 'bearer',
             'scope': self.client._scope,
         }
-
-    def access_token_format(self, token, user=None):
-        if settings.get('OIDC_TOKEN_RESPONSE_FORMAT') is None:
-            return token.access_token
-
-        return settings.get('OIDC_TOKEN_RESPONSE_FORMAT', import_str=True)(
-            user=user, 
-            client=self.client, 
-            token=token, 
-            request=self.request)
 
     @classmethod
     def response(cls, dic, status=200):

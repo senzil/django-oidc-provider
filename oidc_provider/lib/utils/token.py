@@ -121,9 +121,21 @@ def create_token(user, client, scope, id_token_dic=None, request=None):
 
     return token
 
-def encode_token_jwt(user, client, token, request):
+
+def access_token_format(token, client, request, user=None):
+    if settings.get('OIDC_ACCESS_TOKEN_ENCODE') is None:
+        return token.access_token
+
+    return settings.get('OIDC_ACCESS_TOKEN_ENCODE', import_str=True)(
+        user=user,
+        client=client,
+        token=token,
+        request=request)
+
+
+def encode_access_token_jwt(user, client, token, request):
     """
-    Generate a JWT Token Response.
+    Generate a JWT Access Token Response.
     Return JWT String object (return a hash).
     """
     expires_in = settings.get('OIDC_IDTOKEN_EXPIRE')
@@ -139,7 +151,7 @@ def encode_token_jwt(user, client, token, request):
         'scope': token.scope,
         'access_token': token.access_token,
     }
-    
+
     if user is not None: 
         payload['sub'] = settings.get('OIDC_IDTOKEN_SUB_GENERATOR', import_str=True)(user=user)
 
@@ -148,8 +160,23 @@ def encode_token_jwt(user, client, token, request):
 
     return encode_jwt(payload, client)
 
-def create_code(user, client, scope, nonce, is_authentication,
-                code_challenge=None, code_challenge_method=None):
+
+def decode_access_token_jwt(access_token_jwt, client):
+    jwt_payload = decode_jwt(access_token_jwt, client)
+    return jwt_payload['access_token']
+
+
+def get_access_token_from_request(access_token, client):
+    if settings.get('OIDC_ACCESS_TOKEN_DECODE') is None:
+        return access_token
+
+    return settings.get('OIDC_ACCESS_TOKEN_DECODE', import_str=True)(
+        access_token_jwt=access_token, 
+        client=client)
+
+
+def create_code(user, client, scope, nonce, is_authentication, 
+    code_challenge=None, code_challenge_method=None):
     """
     Create and populate a Code object.
     Return a Code object.

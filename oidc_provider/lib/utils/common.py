@@ -141,11 +141,13 @@ def default_introspection_processing_hook(introspection_response, client, id_tok
     """
     return introspection_response
 
+
 def default_aud(client):
     """
     Default function for setting OIDC_TOKEN_JWT_AUD.
     """
     return str(client.id)
+
 
 def get_browser_state_or_default(request):
     """
