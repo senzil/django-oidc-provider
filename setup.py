@@ -12,14 +12,14 @@ with open("./oidc_provider/version.py") as fp:
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
-    name='django-oidc-provider',
+    name='senzil-django-oidc-provider',
     version=version['__version__'],
     packages=find_packages(),
     include_package_data=True,
     license='MIT License',
     description='OpenID Connect Provider implementation for Django.',
-    long_description='http://github.com/juanifioren/django-oidc-provider',
-    url='http://github.com/juanifioren/django-oidc-provider',
+    long_description='http://github.com/senzil/senzil-django-oidc-provider',
+    url='http://github.com/senzil/senzil-django-oidc-provider',
     author='Juan Ignacio Fiorentino',
     author_email='juanifioren@gmail.com',
     zip_safe=False,

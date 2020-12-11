@@ -46,4 +46,4 @@ Run the migrations and generate a server RSA key::
 
 Add this required variable to your project's django settings::
 
-    LOGIN_URL = '/accounts/login/'
+    LOGIN_URL = '/admin/login/'

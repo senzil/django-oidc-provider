@@ -102,7 +102,7 @@ def client_id_from_id_token(id_token):
     return aud
 
 
-def create_token(user, client, scope, id_token_dic=None):
+def create_token(user, client, scope, id_token_dic=None, request=None):
     """
     Create and populate a Token object.
     Return a Token object.
@@ -116,12 +116,37 @@ def create_token(user, client, scope, id_token_dic=None):
         token.id_token = id_token_dic
 
     token.refresh_token = uuid.uuid4().hex
-    token.expires_at = timezone.now() + timedelta(
-        seconds=settings.get('OIDC_TOKEN_EXPIRE'))
+    token.expires_at = timezone.now() + timedelta(seconds=settings.get('OIDC_TOKEN_EXPIRE'))
     token.scope = scope
 
     return token
 
+def generate_token_jwt_response(user, client, token, request):
+    """
+    Generate a JWT Token Response.
+    Return JWT String object.
+    """
+    expires_in = settings.get('OIDC_IDTOKEN_EXPIRE')
+    now = int(time.time())
+    iat_time = now
+    exp_time = int(now + expires_in)
+
+    payload = {
+        'iss': get_issuer(request=request),
+        'client_id': str(client.id),
+        'exp': exp_time,
+        'iat': iat_time,
+        'scope': token.scope,
+        'access_token': token.access_token,
+    }
+    
+    if user is not None: 
+        payload['sub'] = settings.get('OIDC_IDTOKEN_SUB_GENERATOR', import_str=True)(user=user)
+
+    if settings.get('OIDC_TOKEN_JWT_AUD') is not None:
+        payload['aud'] = settings.get('OIDC_TOKEN_JWT_AUD', import_str=True)(client=client)
+
+    return encode_id_token(payload, client)
 
 def create_code(user, client, scope, nonce, is_authentication,
                 code_challenge=None, code_challenge_method=None):

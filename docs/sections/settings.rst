@@ -10,7 +10,7 @@ OIDC_LOGIN_URL
 
 OPTIONAL. ``str``. Used to log the user in. By default Django's ``LOGIN_URL`` will be used. `Read more in the Django docs <https://docs.djangoproject.com/en/1.11/ref/settings/#login-url>`_
 
-``str``. Default is ``/accounts/login/`` (Django's ``LOGIN_URL``).
+``str``. Default is ``/admin/login/`` (Django's ``LOGIN_URL``).
 
 SITE_URL
 ========

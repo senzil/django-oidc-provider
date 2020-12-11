@@ -173,8 +173,12 @@ class TokenEndpoint(object):
         # We don't need to store the code anymore.
         self.code.delete()
 
+        access_token = access_token_format(self, 
+            token=token, 
+            user=self.code.user)
+
         dic = {
-            'access_token': token.access_token,
+            'access_token': access_token,
             'refresh_token': token.refresh_token,
             'token_type': 'bearer',
             'expires_in': settings.get('OIDC_TOKEN_EXPIRE'),
@@ -218,8 +222,12 @@ class TokenEndpoint(object):
         # Forget the old token.
         self.token.delete()
 
+        access_token = access_token_format(self, 
+            token=token, 
+            user=self.token.user)
+
         dic = {
-            'access_token': token.access_token,
+            'access_token': access_token,
             'refresh_token': token.refresh_token,
             'token_type': 'bearer',
             'expires_in': settings.get('OIDC_TOKEN_EXPIRE'),
@@ -249,8 +257,12 @@ class TokenEndpoint(object):
         token.id_token = id_token_dic
         token.save()
 
+        access_token = access_token_format(self, 
+            token=token, 
+            user=self.user)
+
         return {
-            'access_token': token.access_token,
+            'access_token': access_token,
             'refresh_token': token.refresh_token,
             'expires_in': settings.get('OIDC_TOKEN_EXPIRE'),
             'token_type': 'bearer',
@@ -267,12 +279,24 @@ class TokenEndpoint(object):
 
         token.save()
 
+        access_token = self.access_token_format(token=token)
+
         return {
-            'access_token': token.access_token,
+            'access_token': access_token,
             'expires_in': settings.get('OIDC_TOKEN_EXPIRE'),
             'token_type': 'bearer',
             'scope': self.client._scope,
         }
+
+    def access_token_format(self, token, user=None):
+        if settings.get('OIDC_TOKEN_RESPONSE_FORMAT') is None:
+            return token.access_token
+
+        return settings.get('OIDC_TOKEN_RESPONSE_FORMAT', import_str=True)(
+            user=user, 
+            client=self.client, 
+            token=token, 
+            request=self.request)
 
     @classmethod
     def response(cls, dic, status=200):
