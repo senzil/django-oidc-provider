@@ -69,9 +69,9 @@ def create_id_token(token, user, aud, nonce='', at_hash='', request=None, scope=
     return dic
 
 
-def encode_id_token(payload, client):
+def encode_jwt(payload, client):
     """
-    Represent the ID Token as a JSON Web Token (JWT).
+    Represent payload as a JSON Web Token (JWT).
     Return a hash.
     """
     keys = get_client_alg_keys(client)
@@ -79,13 +79,13 @@ def encode_id_token(payload, client):
     return _jws.sign_compact(keys)
 
 
-def decode_id_token(token, client):
+def decode_jwt(jwt, client):
     """
-    Represent the ID Token as a JSON Web Token (JWT).
-    Return a hash.
+    Decode a JSON Web Token (JWT). If the signature doesn't match, raise BadSignature.
+    Return a dict.
     """
     keys = get_client_alg_keys(client)
-    return JWS().verify_compact(token, keys=keys)
+    return JWS().verify_compact(jwt, keys=keys)
 
 
 def client_id_from_id_token(id_token):
@@ -121,10 +121,10 @@ def create_token(user, client, scope, id_token_dic=None, request=None):
 
     return token
 
-def generate_token_jwt_response(user, client, token, request):
+def encode_token_jwt(user, client, token, request):
     """
     Generate a JWT Token Response.
-    Return JWT String object.
+    Return JWT String object (return a hash).
     """
     expires_in = settings.get('OIDC_IDTOKEN_EXPIRE')
     now = int(time.time())
@@ -146,7 +146,7 @@ def generate_token_jwt_response(user, client, token, request):
     if settings.get('OIDC_TOKEN_JWT_AUD') is not None:
         payload['aud'] = settings.get('OIDC_TOKEN_JWT_AUD', import_str=True)(client=client)
 
-    return encode_id_token(payload, client)
+    return encode_jwt(payload, client)
 
 def create_code(user, client, scope, nonce, is_authentication,
                 code_challenge=None, code_challenge_method=None):

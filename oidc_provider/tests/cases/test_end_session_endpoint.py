@@ -8,7 +8,7 @@ from django.test import TestCase
 from oidc_provider.lib.utils.token import (
     create_token,
     create_id_token,
-    encode_id_token,
+    encode_jwt,
 )
 from oidc_provider import settings
 from oidc_provider.tests.app.utils import (
@@ -48,7 +48,7 @@ class EndSessionTestCase(TestCase):
         token = create_token(self.user, self.oidc_client, [])
         id_token_dic = create_id_token(
             token=token, user=self.user, aud=self.oidc_client.client_id)
-        id_token = encode_id_token(id_token_dic, self.oidc_client)
+        id_token = encode_jwt(id_token_dic, self.oidc_client)
 
         query_params['id_token_hint'] = id_token
 
@@ -65,7 +65,7 @@ class EndSessionTestCase(TestCase):
         id_token_dic = create_id_token(
             token=token, user=self.user, aud=self.oidc_client.client_id)
         id_token_dic['aud'] = [id_token_dic['aud']]
-        id_token = encode_id_token(id_token_dic, self.oidc_client)
+        id_token = encode_jwt(id_token_dic, self.oidc_client)
         query_params['id_token_hint'] = id_token
         response = self.client.get(self.url, query_params)
         self.assertRedirects(

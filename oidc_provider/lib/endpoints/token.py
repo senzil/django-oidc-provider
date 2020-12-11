@@ -14,7 +14,7 @@ from oidc_provider.lib.utils.oauth2 import extract_client_auth
 from oidc_provider.lib.utils.token import (
     create_id_token,
     create_token,
-    encode_id_token,
+    encode_jwt,
 )
 from oidc_provider.models import (
     Client,
@@ -182,7 +182,7 @@ class TokenEndpoint(object):
             'refresh_token': token.refresh_token,
             'token_type': 'bearer',
             'expires_in': settings.get('OIDC_TOKEN_EXPIRE'),
-            'id_token': encode_id_token(id_token_dic, token.client),
+            'id_token': encode_jwt(id_token_dic, token.client),
         }
 
         return dic
@@ -231,7 +231,7 @@ class TokenEndpoint(object):
             'refresh_token': token.refresh_token,
             'token_type': 'bearer',
             'expires_in': settings.get('OIDC_TOKEN_EXPIRE'),
-            'id_token': encode_id_token(id_token_dic, self.token.client),
+            'id_token': encode_jwt(id_token_dic, self.token.client),
         }
 
         return dic
@@ -266,7 +266,7 @@ class TokenEndpoint(object):
             'refresh_token': token.refresh_token,
             'expires_in': settings.get('OIDC_TOKEN_EXPIRE'),
             'token_type': 'bearer',
-            'id_token': encode_id_token(id_token_dic, token.client),
+            'id_token': encode_jwt(id_token_dic, token.client),
         }
 
     def create_client_credentials_response_dic(self):

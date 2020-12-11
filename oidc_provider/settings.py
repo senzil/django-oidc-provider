@@ -175,7 +175,7 @@ class DefaultSettings(object):
         Used to generate access_token. The default value, generate a JWT output for access_token.
         If OIDC_TOKEN_RESPONSE_FORMAT is None, the OIDC return access_token without format (uuid.uuid4().hex).
         """
-        return 'oidc_provider.lib.utils.token.generate_token_jwt_response'
+        return 'oidc_provider.lib.utils.token.encode_token_jwt'
     
     @property
     def OIDC_TOKEN_JWT_AUD(self):
