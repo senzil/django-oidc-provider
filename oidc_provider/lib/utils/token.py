@@ -152,7 +152,7 @@ def encode_access_token_jwt(user, client, token, request):
         'access_token': token.access_token,
     }
 
-    if user is not None: 
+    if user is not None:
         payload['sub'] = settings.get('OIDC_IDTOKEN_SUB_GENERATOR', import_str=True)(user=user)
 
     if settings.get('OIDC_TOKEN_JWT_AUD') is not None:
@@ -171,16 +171,18 @@ def get_access_token_from_request(access_token, client):
         return access_token
 
     return settings.get('OIDC_ACCESS_TOKEN_DECODE', import_str=True)(
-        access_token_jwt=access_token, 
+        access_token_jwt=access_token,
         client=client)
 
 
-def create_code(user, client, scope, nonce, is_authentication, 
-    code_challenge=None, code_challenge_method=None):
+def create_code(user, client, scope, nonce, is_authentication,
+                code_challenge=None, code_challenge_method=None):
+
     """
     Create and populate a Code object.
     Return a Code object.
     """
+
     code = Code()
     code.user = user
     code.client = client
