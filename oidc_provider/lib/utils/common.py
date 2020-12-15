@@ -1,3 +1,4 @@
+import base64, re
 from hashlib import sha224
 
 import django
@@ -146,7 +147,7 @@ def default_aud(client):
     """
     Default function for setting OIDC_TOKEN_JWT_AUD.
     """
-    return str(client.id)
+    return str(client.client_id)
 
 
 def get_browser_state_or_default(request):
@@ -191,3 +192,14 @@ def cors_allow_any(request, response):
         response['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
 
     return response
+
+
+def decode_base64(data, altchars=b'+/'):
+    """Decode base64, padding being optional.
+    :param data: Base64 data as an ASCII byte string
+    :returns: The decoded byte string.
+    """
+    missing_padding = len(data) % 4
+    if missing_padding:
+        data += '=' * (4 - missing_padding)
+    return base64.b64decode(data, altchars).decode("utf-8")

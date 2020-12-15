@@ -1,6 +1,7 @@
 from datetime import timedelta
 import time
 import uuid
+import json
 
 from Cryptodome.PublicKey.RSA import importKey
 from django.utils import dateformat, timezone
@@ -9,12 +10,21 @@ from jwkest.jwk import SYMKey
 from jwkest.jws import JWS
 from jwkest.jwt import JWT
 
-from oidc_provider.lib.utils.common import get_issuer, run_processing_hook
+from oidc_provider.lib.utils.common import (
+    get_issuer,
+    run_processing_hook,
+    decode_base64,
+)
 from oidc_provider.lib.claims import StandardScopeClaims
+from oidc_provider.lib.errors import (
+    ClientIdError, 
+    BearerTokenError
+)
 from oidc_provider.models import (
     Code,
     RSAKey,
     Token,
+    Client,
 )
 from oidc_provider import settings
 
@@ -145,7 +155,7 @@ def encode_access_token_jwt(user, client, token, request):
 
     payload = {
         'iss': get_issuer(request=request),
-        'client_id': str(client.id),
+        'client_id': str(client.client_id),
         'exp': exp_time,
         'iat': iat_time,
         'scope': token.scope,
@@ -161,18 +171,34 @@ def encode_access_token_jwt(user, client, token, request):
     return encode_jwt(payload, client)
 
 
-def decode_access_token_jwt(access_token_jwt, client):
-    jwt_payload = decode_jwt(access_token_jwt, client)
+def wrapper_decode_jwt(access_token_jwt):
+    try:
+        not_verified_payload = decode_base64(access_token_jwt.split('.')[1])
+    except Exception:
+        raise BearerTokenError('invalid_token')
+
+    try:
+        payload_json = json.loads(not_verified_payload)
+        client = Client.objects.get(client_id=payload_json['client_id'])
+    except Client.DoesNotExist:
+        raise ClientIdError()
+
+    jwt_payload = decode_jwt(jwt=access_token_jwt, client=client)
+
+    return jwt_payload
+
+
+def decode_access_token_jwt(access_token_jwt):
+    jwt_payload = wrapper_decode_jwt(access_token_jwt=access_token_jwt)
     return jwt_payload['access_token']
 
 
-def get_access_token_from_request(access_token, client):
+def get_plain_access_token(access_token):
     if settings.get('OIDC_ACCESS_TOKEN_DECODE') is None:
         return access_token
 
     return settings.get('OIDC_ACCESS_TOKEN_DECODE', import_str=True)(
-        access_token_jwt=access_token,
-        client=client)
+        access_token_jwt=access_token)
 
 
 def create_code(user, client, scope, nonce, is_authentication,

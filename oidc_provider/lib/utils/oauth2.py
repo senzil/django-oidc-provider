@@ -4,14 +4,22 @@ import re
 
 from django.http import HttpResponse
 
-from oidc_provider.lib.errors import BearerTokenError
+from jwkest import BadSignature
+
+from oidc_provider.lib.errors import (
+    BearerTokenError,
+    ClientIdError
+)
+from oidc_provider.lib.utils.token import (
+    get_plain_access_token,
+    wrapper_decode_jwt,
+)
 from oidc_provider.models import Token
 
 
 logger = logging.getLogger(__name__)
 
-
-def extract_access_token(request):
+def extract_authorization_token(request):
     """
     Get the access token using Authorization Request Header Field method.
     Or try getting via GET.
@@ -25,8 +33,50 @@ def extract_access_token(request):
         access_token = auth_header.split()[1]
     else:
         access_token = request.GET.get('access_token', '')
+    
+    return access_token
+
+
+def extract_access_token(request):
+    """
+    Get the access token using Authorization Request Header Field method.
+    Or try getting via GET.
+    See: http://tools.ietf.org/html/rfc6750#section-2.1
+
+    Return a string.
+    """
+    
+    access_token = extract_authorization_token(request)
+
+    try:
+        access_token = get_plain_access_token(access_token=access_token)
+    except BadSignature:
+        raise BearerTokenError('invalid_token')
+    except ClientIdError:
+        raise BearerTokenError('invalid_token')
 
     return access_token
+
+
+def extract_payload(request):
+    """
+    Get the JWT Payload using Authorization Request Header Field method.
+    Or try getting via GET.
+    See: http://tools.ietf.org/html/rfc6750#section-2.1
+
+    Return a json.
+    """
+
+    access_token = extract_authorization_token(request)
+
+    try:
+        payload = wrapper_decode_jwt(access_token_jwt=access_token)
+    except BadSignature:
+        raise BearerTokenError('invalid_token')
+    except ClientIdError:
+        raise BearerTokenError('invalid_token')
+
+    return payload
 
 
 def extract_client_auth(request):

@@ -30,7 +30,7 @@ from oidc_provider.lib.endpoints.introspection import INTROSPECTION_SCOPE
 from oidc_provider.lib.utils.oauth2 import protected_resource_view
 from oidc_provider.lib.utils.token import (
     create_code,
-    get_access_token_from_request
+    get_plain_access_token
 )
 from oidc_provider.models import Token
 from oidc_provider.tests.app.utils import (
@@ -246,9 +246,8 @@ class TokenTestCase(TestCase):
 
         token = Token.objects.get(user=self.user)
 
-        response_dict_access_token = get_access_token_from_request(
-            access_token=response_dict['access_token'],
-            client=self.client)
+        response_dict_access_token = get_plain_access_token(
+            access_token=response_dict['access_token'])
 
         self.assertEqual(response_dict_access_token, token.access_token)
         self.assertEqual(response_dict['refresh_token'], token.refresh_token)
@@ -258,7 +257,7 @@ class TokenTestCase(TestCase):
         self.assertEqual(id_token['aud'], self.client.client_id)
 
         # Check the scope is honored by checking the claims in the userinfo
-        userinfo_response = self._get_userinfo(response_dict_access_token)
+        userinfo_response = self._get_userinfo(response_dict['access_token'])
         userinfo = json.loads(userinfo_response.content.decode('utf-8'))
 
         for (scope_param, claim) in [('email', 'email'), ('profile', 'name')]:
@@ -297,9 +296,8 @@ class TokenTestCase(TestCase):
 
         token = Token.objects.get(user=self.user)
 
-        response_dict_access_token = get_access_token_from_request(
-            access_token=response_dict['access_token'],
-            client=self.client)
+        response_dict_access_token = get_plain_access_token(
+            access_token=response_dict['access_token'])
 
         self.assertEqual(response_dict_access_token, token.access_token)
         self.assertEqual(response_dict['refresh_token'], token.refresh_token)
@@ -408,13 +406,11 @@ class TokenTestCase(TestCase):
             # but the refresh request had no email in scope
             self.assertNotIn('email', id_token2, 'email was not requested')
 
-        response_dic1_access_token = get_access_token_from_request(
-            access_token=response_dic1['access_token'],
-            client=self.client)
+        response_dic1_access_token = get_plain_access_token(
+            access_token=response_dic1['access_token'])
 
-        response_dic2_access_token = get_access_token_from_request(
-            access_token=response_dic2['access_token'],
-            client=self.client)
+        response_dic2_access_token = get_plain_access_token(
+            access_token=response_dic2['access_token'])
 
         self.assertNotEqual(response_dic1['id_token'], response_dic2['id_token'])
         self.assertNotEqual(response_dic1_access_token, response_dic2_access_token)
@@ -436,8 +432,8 @@ class TokenTestCase(TestCase):
         self.assertIn('invalid_grant', response.content.decode('utf-8'))
 
         # Old access token is invalidated
-        self.assertEqual(self._get_userinfo(response_dic1_access_token).status_code, 401)
-        self.assertEqual(self._get_userinfo(response_dic2_access_token).status_code, 200)
+        self.assertEqual(self._get_userinfo(response_dic1['access_token']).status_code, 401)
+        self.assertEqual(self._get_userinfo(response_dic2['access_token']).status_code, 200)
 
         # Empty refresh token is invalid
         post_data = self._refresh_token_post_data('')
@@ -831,9 +827,8 @@ class TokenTestCase(TestCase):
         self.assertTrue('access_token' in response_dict)
         self.assertEqual(' '.join(fake_scopes_list), response_dict['scope'])
 
-        access_token = get_access_token_from_request(
-            access_token=response_dict['access_token'],
-            client=self.client)
+        access_token = get_plain_access_token(
+            access_token=response_dict['access_token'])
 
         # Create a protected resource and test the access_token.
 
@@ -844,7 +839,7 @@ class TokenTestCase(TestCase):
 
         # Deploy view on some url. So, base url could be anything.
         request = self.factory.get(
-            '/api/protected/?access_token={0}'.format(access_token))
+            '/api/protected/?access_token={0}'.format(response_dict['access_token']))
         response = protected_api(request)
         response_dict = json.loads(response.content.decode('utf-8'))
 
@@ -888,9 +883,8 @@ class TokenTestCase(TestCase):
         response = self._post_request(post_data)
         response_dict = json.loads(response.content.decode('utf-8'))
 
-        access_token = get_access_token_from_request(
-            access_token=response_dict['access_token'],
-            client=self.client)
+        access_token = get_plain_access_token(
+            access_token=response_dict['access_token'])
 
         token = Token.objects.get(access_token=access_token)
         self.assertTrue(str(token))
