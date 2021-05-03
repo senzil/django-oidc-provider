@@ -6,7 +6,7 @@ from django.forms import ModelForm
 from django.contrib import admin
 from django.utils.translation import ugettext_lazy as _
 
-from oidc_provider.models import Client, Code, Token, RSAKey
+from oidc_provider.models import Client, Code, Token, RSAKey, Scope
 
 
 class ClientForm(ModelForm):
@@ -90,3 +90,12 @@ class TokenAdmin(admin.ModelAdmin):
 class RSAKeyAdmin(admin.ModelAdmin):
 
     readonly_fields = ['kid']
+
+@admin.register(Scope)
+class ScopeAdmin(admin.ModelAdmin):
+    fieldsets = [
+        [_(u''), {
+            'fields': ('scope', 'description'),
+        }]
+    ]
+    search_fields = ['scope', 'description']

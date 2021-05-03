@@ -51,7 +51,8 @@ from oidc_provider.lib.utils.token import client_id_from_id_token
 from oidc_provider.models import (
     Client,
     RSAKey,
-    ResponseType)
+    ResponseType,
+    Scope)
 from oidc_provider import settings
 from oidc_provider import signals
 

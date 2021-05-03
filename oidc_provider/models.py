@@ -30,6 +30,28 @@ JWT_ALGS = [
 ]
 
 
+class Scope(models.Model):
+
+    scope = models.CharField(
+        max_length=30,
+        primary_key=True,
+        verbose_name=_(u'Scope')
+    )
+    description = models.CharField(
+        max_length=50,
+    )
+
+    class Meta:
+        verbose_name = _(u'Scope')
+        verbose_name_plural = _(u'Scopes')
+
+    def __str__(self):
+        return u'{0}'.format(self.scope)
+
+    def __unicode__(self):
+        return self.__str__()
+
+
 class ResponseTypeManager(models.Manager):
     def get_by_natural_key(self, value):
         return self.get(value=value)
@@ -106,9 +128,9 @@ class Client(models.Model):
         default='',
         verbose_name=_(u'Post Logout Redirect URIs'),
         help_text=_(u'Enter each URI on a new line.'))
-    _scope = models.TextField(
+    scope = models.ManyToManyField(Scope,
         blank=True,
-        default='',
+        default=None,
         verbose_name=_(u'Scopes'),
         help_text=_('Specifies the authorized scope values for the client app.'))
 
@@ -146,12 +168,12 @@ class Client(models.Model):
         self._post_logout_redirect_uris = '\n'.join(value)
 
     @property
-    def scope(self):
-        return self._scope.split()
+    def _scope(self):
+        return ' '.join(map(str, self.scope.values_list('scope', flat=True)))
 
-    @scope.setter
-    def scope(self, value):
-        self._scope = ' '.join(value)
+ #   @scope.setter
+ #   def scope(self, value):
+ #       self.scope = value
 
     @property
     def default_redirect_uri(self):

@@ -282,7 +282,7 @@ class TokenEndpoint(object):
         token = create_token(
             user=None,
             client=self.client,
-            scope=self.client.scope)
+            scope=self.client._scope.split())
 
         token.save()
 
