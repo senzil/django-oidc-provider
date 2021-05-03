@@ -274,6 +274,9 @@ class ProviderInfoView(View):
         types_supported = [response_type.value for response_type in ResponseType.objects.all()]
         dic['response_types_supported'] = types_supported
 
+        scopes_supported = [item.scope for item in Scope.objects.all()]
+        dic['scopes_supported'] = scopes_supported
+        
         dic['jwks_uri'] = site_url + reverse('oidc_provider:jwks')
 
         dic['id_token_signing_alg_values_supported'] = ['HS256', 'RS256']
