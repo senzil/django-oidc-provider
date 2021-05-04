@@ -29,6 +29,14 @@ JWT_ALGS = [
     ('RS256', 'RS256'),
 ]
 
+GRANT_TYPES_CHOICES = [
+    'implicit',
+    'authorization_code',
+    'client_credentials',
+    'password',
+    'refresh_token',
+]
+
 
 class Scope(models.Model):
 

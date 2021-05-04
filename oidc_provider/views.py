@@ -52,7 +52,8 @@ from oidc_provider.models import (
     Client,
     RSAKey,
     ResponseType,
-    Scope)
+    Scope,
+    GRANT_TYPES_CHOICES)
 from oidc_provider import settings
 from oidc_provider import signals
 
@@ -276,6 +277,8 @@ class ProviderInfoView(View):
 
         scopes_supported = [item.scope for item in Scope.objects.all()]
         dic['scopes_supported'] = scopes_supported
+
+        dic['grant_types_supported'] = GRANT_TYPES_CHOICES
         
         dic['jwks_uri'] = site_url + reverse('oidc_provider:jwks')
 
