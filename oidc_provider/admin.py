@@ -98,4 +98,5 @@ class ScopeAdmin(admin.ModelAdmin):
             'fields': ('scope', 'description'),
         }]
     ]
+    list_display = ('scope', 'description')
     search_fields = ['scope', 'description']

@@ -4,19 +4,20 @@ from django.db import migrations, models
 
 def load_scope(apps, schema_editor):
     Scope = apps.get_model("oidc_provider", "Scope")
-    OpenID_Scope = Scope(scope="openid", description="openid")
+    OpenID_Scope = Scope(scope="openid", description="Provide access to openid endpoints")
     OpenID_Scope.save()
-    Profile_Scope = Scope(scope="profile", description="profile")
+    Profile_Scope = Scope(scope="profile", description="Get Basic Profile from user info")
     Profile_Scope.save()
-    Email_Scope = Scope(scope="email", description="email")
+    Email_Scope = Scope(scope="email", description="Get email from user info")
     Email_Scope.save()
-    Address_Scope = Scope(scope="address", description="address")
+    Address_Scope = Scope(scope="address", description="Get address from user info")
     Address_Scope.save()
-    Phone_Scope = Scope(scope="phone", description="phone")
+    Phone_Scope = Scope(scope="phone", description="Get phone from user info")
     Phone_Scope.save()
-    Offline_Scope = Scope(scope="offline_access", description="offline_access")
+    Offline_Scope = Scope(scope="offline_access", description="Allow access to offline_access flow")
     Offline_Scope.save()
-
+    Introspection_Scope = Scope(scope="token_introspection", description="Allow access to introspection endpoint")
+    Introspection_Scope.save()
 
 class Migration(migrations.Migration):
 
