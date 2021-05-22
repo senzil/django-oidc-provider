@@ -1,4 +1,6 @@
 from base64 import b64decode
+from functools import wraps
+import inspect
 import logging
 import re
 
@@ -102,6 +104,31 @@ def extract_client_auth(request):
 
     return (client_id, client_secret)
 
+def set_token_in_request(request):
+    request.access_token = getattr(request, 'access_token', extract_access_token(request))
+
+    try:
+        request.token = getattr(request, 'token', Token.objects.get(access_token=request.access_token))
+    except Token.DoesNotExist:
+        logger.debug('[UserInfo] Token does not exist: %s', request.access_token)
+        raise BearerTokenError('invalid_token')
+
+def get_view_methods(view):
+    #for drf compatibility
+    drf_viewset_mappings = [
+        'list', 
+        'retrieve',
+        'create',
+        'update',
+        'partial_update',
+        'destroy'
+        ]
+    return [ item for item in inspect.getmembers(view)
+                if (item[0] in view.http_method_names
+                    or hasattr(item[1], 'mapping')
+                    or item[0] in drf_viewset_mappings)
+        ]
+
 
 def protected_resource_view(scopes=None):
     """
@@ -112,22 +139,34 @@ def protected_resource_view(scopes=None):
     if scopes is None:
         scopes = []
 
-    def wrapper(view):
-        def view_wrapper(request,  *args, **kwargs):
-            access_token = extract_access_token(request)
+    def wrapper_method(view_method):
+        
+        args_name = inspect.getargspec(view_method)[0]
+        if not 'request' in args_name:
+            raise RuntimeError(
+                    "This decorator can only work with django (or drf) view methods " \
+                    "with the \"request\" parameter as first or second argument. " \
+                    "Examples: def action  (request, *args, **kwargs) or def action(self, request, *args, **kwargs)")
+        
+        if not hasattr(view_method, 'kwargs'):
+            view_method.kwargs = {}
+        if not 'required_scopes' in view_method.kwargs:
+            view_method.kwargs['required_scopes'] = set()
+        view_method.kwargs['required_scopes'].update(scopes)
+        
+        @wraps(view_method)
+        def view_wrapper(*args, **kwargs):
+            
+            request = args[args_name.index('request')]
+
+            set_token_in_request(request)
 
             try:
-                try:
-                    kwargs['token'] = Token.objects.get(access_token=access_token)
-                except Token.DoesNotExist:
-                    logger.debug('[UserInfo] Token does not exist: %s', access_token)
+                if request.token.has_expired():
+                    logger.debug('[UserInfo] Token has expired: %s', request.access_token)
                     raise BearerTokenError('invalid_token')
 
-                if kwargs['token'].has_expired():
-                    logger.debug('[UserInfo] Token has expired: %s', access_token)
-                    raise BearerTokenError('invalid_token')
-
-                if not set(scopes).issubset(set(kwargs['token'].scope)):
+                if not view_method.kwargs['required_scopes'].issubset(set(request.token.scope)):
                     logger.debug('[UserInfo] Missing openid scope.')
                     raise BearerTokenError('insufficient_scope')
             except BearerTokenError as error:
@@ -136,8 +175,23 @@ def protected_resource_view(scopes=None):
                     error.code, error.description)
                 return response
 
-            return view(request,  *args, **kwargs)
+            return view_method(*args, **kwargs)
 
         return view_wrapper
+
+    def wrapper(view):
+        if inspect.isclass(view):
+            # level class attribute
+            for view_method in get_view_methods(view):
+                setattr(view, view_method[0], wrapper_method(view_method[1]))
+            # persist required scopes on class to provide annotation to derived view methods.
+            view.required_scopes = set(scopes)
+        elif callable(view) and hasattr(view, 'cls'):
+            # 'cls' attr signals that as_view() was called
+            for view_method in get_view_methods(view.cls):
+                setattr(view, view_method[0], wrapper_method(view_method[1]))
+        elif callable(view):
+            wrapper_method(view)
+        return view
 
     return wrapper

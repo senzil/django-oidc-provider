@@ -148,18 +148,13 @@ def encode_access_token_jwt(user, client, token, request):
     Generate a JWT Access Token Response.
     Return JWT String object (return a hash).
     """
-    expires_in = settings.get('OIDC_IDTOKEN_EXPIRE')
-    now = int(time.time())
-    iat_time = now
-    exp_time = int(now + expires_in)
-
     payload = {
         'iss': get_issuer(request=request),
         'client_id': str(client.client_id),
-        'exp': exp_time,
-        'iat': iat_time,
+        'exp': int(token.expires_at.timestamp()),
+        'iat': int(timezone.now().timestamp()),
         'scope': token.scope,
-        'access_token': token.access_token,
+        'jti': token.access_token,
     }
 
     if user is not None:
@@ -190,7 +185,7 @@ def wrapper_decode_jwt(access_token_jwt):
 
 def decode_access_token_jwt(access_token_jwt):
     jwt_payload = wrapper_decode_jwt(access_token_jwt=access_token_jwt)
-    return jwt_payload['access_token']
+    return jwt_payload['jti']
 
 
 def get_plain_access_token(access_token):

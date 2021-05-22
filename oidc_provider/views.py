@@ -240,7 +240,7 @@ def userinfo(request, *args, **kwargs):
     if request.method == 'OPTIONS':
         return set_headers(HttpResponse())
 
-    token = kwargs['token']
+    token = request.token
 
     dic = {
         'sub': token.id_token.get('sub'),
