@@ -1,4 +1,5 @@
-import base64, re
+import base64, re, inspect
+from functools import wraps
 from hashlib import sha224
 
 import django
@@ -192,6 +193,18 @@ def cors_allow_any(request, response):
         response['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
 
     return response
+
+
+def cors_allowed(function):
+    args_name = inspect.getargspec(function)[0]
+    @wraps(function)
+    def wrapper_method(*args, **kwargs):
+        request = args[args_name.index('request')]
+        if request.method == 'OPTIONS':
+            return (request, HttpResponse())
+        return cors_allow_any(request, function(*args, **kwargs))
+
+    return wrapper_method
 
 
 def decode_base64(data, altchars=b'+/'):

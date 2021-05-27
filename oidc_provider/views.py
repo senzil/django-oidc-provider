@@ -45,6 +45,7 @@ from oidc_provider.lib.utils.common import (
     get_site_url,
     get_issuer,
     cors_allow_any,
+    cors_allowed
 )
 from oidc_provider.lib.utils.oauth2 import protected_resource_view
 from oidc_provider.lib.utils.token import client_id_from_id_token
@@ -260,6 +261,7 @@ def userinfo(request, *args, **kwargs):
 
 
 class ProviderInfoView(View):
+    @cors_allowed
     def get(self, request, *args, **kwargs):
         dic = dict()
 
@@ -268,6 +270,7 @@ class ProviderInfoView(View):
 
         dic['authorization_endpoint'] = site_url + reverse('oidc_provider:authorize')
         dic['token_endpoint'] = site_url + reverse('oidc_provider:token')
+        dic['jwks_uri'] = site_url + reverse('oidc_provider:jwks')
         dic['userinfo_endpoint'] = site_url + reverse('oidc_provider:userinfo')
         dic['end_session_endpoint'] = site_url + reverse('oidc_provider:end-session')
         dic['introspection_endpoint'] = site_url + reverse('oidc_provider:token-introspection')
@@ -280,8 +283,6 @@ class ProviderInfoView(View):
 
         dic['grant_types_supported'] = GRANT_TYPES_CHOICES
         
-        dic['jwks_uri'] = site_url + reverse('oidc_provider:jwks')
-
         dic['id_token_signing_alg_values_supported'] = ['HS256', 'RS256']
 
         # See: http://openid.net/specs/openid-connect-core-1_0.html#SubjectIDTypes
