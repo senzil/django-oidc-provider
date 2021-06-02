@@ -163,6 +163,10 @@ def encode_access_token_jwt(user, client, token, request):
     if settings.get('OIDC_TOKEN_JWT_AUD') is not None:
         payload['aud'] = settings.get('OIDC_TOKEN_JWT_AUD', import_str=True)(client=client)
 
+    if settings.get('OIDC_TOKEN_JWT_EXTRA_INFO'):
+        extra_info = settings.get('OIDC_TOKEN_JWT_EXTRA_INFO', import_str=True)(token)
+        payload.update(extra_info)
+
     return encode_jwt(payload, client)
 
 

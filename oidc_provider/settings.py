@@ -195,6 +195,14 @@ class DefaultSettings(object):
         Used to populate aud field into payload dict in case that you choice a jwt token response.
         """
         return 'oidc_provider.lib.utils.common.default_aud'
+    
+    @property
+    def OIDC_TOKEN_JWT_EXTRA_INFO(self):
+        """
+        OPTIONAL. A string with the location of your function.
+        Used to populate extra data to access token JWT payload dict in case that you choice a JWT token response.
+        """
+        return None
 
 
 default_settings = DefaultSettings()
