@@ -3,21 +3,16 @@ import logging
 from django.views.decorators.csrf import csrf_exempt
 
 from oidc_provider.lib.endpoints.introspection import TokenIntrospectionEndpoint
-try:
-    from urllib import urlencode
-    from urlparse import urlsplit, parse_qs, urlunsplit
-except ImportError:
-    from urllib.parse import urlsplit, parse_qs, urlunsplit, urlencode
+
+from urllib.parse import urlsplit, parse_qs, urlunsplit, urlencode
 
 from Cryptodome.PublicKey import RSA
 from django.contrib.auth.views import (
     redirect_to_login,
     LogoutView,
 )
-try:
-    from django.urls import reverse
-except ImportError:
-    from django.core.urlresolvers import reverse
+
+from django.urls import reverse
 from django.contrib.auth import logout as django_user_logout
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render
@@ -51,7 +46,7 @@ from oidc_provider.lib.utils.oauth2 import protected_resource_view
 from oidc_provider.lib.utils.token import client_id_from_id_token
 from oidc_provider.models import (
     Client,
-    RSAKey,
+    JWKKey,
     ResponseType,
     Scope,
     GRANT_TYPES_CHOICES)
@@ -100,7 +95,7 @@ class AuthorizeView(View):
                     else:
                         django_user_logout(request)
                         return redirect_to_login(
-                            request.get_full_path(), settings.get('OIDC_LOGIN_URL'))
+                            request.get_full_path(),settings.get('OIDC_LOGIN_MULTI_ACCOUNT_URL', settings.get('OIDC_LOGIN_URL')))
 
                 if {'none', 'consent'}.issubset(authorize.params['prompt']):
                     raise AuthorizeError(
@@ -270,23 +265,25 @@ class ProviderInfoView(View):
 
         dic['authorization_endpoint'] = site_url + reverse('oidc_provider:authorize')
         dic['token_endpoint'] = site_url + reverse('oidc_provider:token')
-        dic['jwks_uri'] = site_url + reverse('oidc_provider:jwks')
         dic['userinfo_endpoint'] = site_url + reverse('oidc_provider:userinfo')
+        dic['jwks_uri'] = site_url + reverse('oidc_provider:jwks')
+        # dic["registration_endpoint"]
+        dic['scopes_supported'] = [item.scope for item in Scope.objects.all()]
+        dic['response_types_supported'] = [response_type.value for response_type in ResponseType.objects.all()]
+        # dic["response_modes_supported"] = ["query", "fragment"]
+        dic['grant_types_supported'] = GRANT_TYPES_CHOICES
+        # dic["acr_values_supported"]
+        # See: http://openid.net/specs/openid-connect-core-1_0.html#SubjectIDTypes
+        dic['subject_types_supported'] = ['public']
+
+
         dic['end_session_endpoint'] = site_url + reverse('oidc_provider:end-session')
         dic['introspection_endpoint'] = site_url + reverse('oidc_provider:token-introspection')
 
-        types_supported = [response_type.value for response_type in ResponseType.objects.all()]
-        dic['response_types_supported'] = types_supported
 
-        scopes_supported = [item.scope for item in Scope.objects.all()]
-        dic['scopes_supported'] = scopes_supported
 
-        dic['grant_types_supported'] = GRANT_TYPES_CHOICES
-        
+
         dic['id_token_signing_alg_values_supported'] = ['HS256', 'RS256']
-
-        # See: http://openid.net/specs/openid-connect-core-1_0.html#SubjectIDTypes
-        dic['subject_types_supported'] = ['public']
 
         dic['token_endpoint_auth_methods_supported'] = ['client_secret_post',
                                                         'client_secret_basic']
@@ -304,7 +301,7 @@ class JwksView(View):
     def get(self, request, *args, **kwargs):
         dic = dict(keys=[])
 
-        for rsakey in RSAKey.objects.all():
+        for rsakey in JWKKey.objects.all():
             public_key = RSA.importKey(rsakey.key).publickey()
             dic['keys'].append({
                 'kty': 'RSA',

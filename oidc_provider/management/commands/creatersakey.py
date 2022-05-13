@@ -1,6 +1,7 @@
+from msilib import type_key
 from Cryptodome.PublicKey import RSA
 from django.core.management.base import BaseCommand
-from oidc_provider.models import RSAKey
+from oidc_provider.models import JWKKey
 
 
 class Command(BaseCommand):
@@ -9,7 +10,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         try:
             key = RSA.generate(2048)
-            rsakey = RSAKey(key=key.exportKey('PEM').decode('utf8'))
+            rsakey = JWKKey(type_key="RS256", key=key.exportKey('PEM').decode('utf8'))
             rsakey.save()
             self.stdout.write(u'RSA key successfully created with kid: {0}'.format(rsakey.kid))
         except Exception as e:

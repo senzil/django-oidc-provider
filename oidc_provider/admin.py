@@ -1,13 +1,17 @@
 from hashlib import sha224
 from random import randint
+from typing import Optional, TypeVar
 from uuid import uuid4
 
+from django.http.request import HttpRequest
+from django.db.models.base import Model
 from django.forms import ModelForm
 from django.contrib import admin
 from django.utils.translation import ugettext_lazy as _
 
-from oidc_provider.models import Client, Code, Token, RSAKey, Scope
+from oidc_provider.models import Client, Code, Token, JWKKey, Scope
 
+_ModelT = TypeVar("_ModelT", bound=Model)
 
 class ClientForm(ModelForm):
 
@@ -50,18 +54,28 @@ class ClientForm(ModelForm):
 class ClientAdmin(admin.ModelAdmin):
 
     fieldsets = [
-        [_(u''), {
+        [_(''), {
             'fields': (
-                'name', 'owner', 'client_type', 'response_types', '_redirect_uris', 'jwt_alg',
+                'name', 'owner', 'client_type', 'response_types',
+                '_redirect_uris',
                 'require_consent', 'reuse_consent'),
         }],
-        [_(u'Credentials'), {
+        [_('Id Token'), {
+            'fields': ('idtoken_alg', 'idtoken_jwk_type', 'idtoken_jwe_alg', 'idtoken_jwe_enc',),
+        }],
+        [_('Access Token'), {
+            'fields': ('at_alg', 'at_jwk_type', 'at_jwe_alg', 'at_jwe_enc')
+        }],
+         [_('Refresh Token'), {
+            'fields': ('rt_alg', 'rt_jwk_type', 'rt_jwe_alg', 'rt_jwe_enc')
+        }],
+        [_('Credentials'), {
             'fields': ('client_id', 'client_secret', 'scope'),
         }],
-        [_(u'Information'), {
+        [_('Information'), {
             'fields': ('contact_email', 'website_url', 'terms_url', 'logo', 'date_created'),
         }],
-        [_(u'Session Management'), {
+        [_('Session Management'), {
             'fields': ('_post_logout_redirect_uris',),
         }],
     ]
@@ -86,15 +100,28 @@ class TokenAdmin(admin.ModelAdmin):
         return False
 
 
-@admin.register(RSAKey)
-class RSAKeyAdmin(admin.ModelAdmin):
+@admin.register(JWKKey)
+class JWKAdmin(admin.ModelAdmin):
 
-    readonly_fields = ['kid']
+    change_list_template = "admin/change_list_jwkkeys.html"
+
+    fieldsets = [
+        [_(''), {
+            'fields': ("key_type", "valid_from", "expires_at"),
+        }]
+    ]
+
+    list_display = ["kid", "key_type", "valid_from", "has_expired"]
+
+    readonly_fields = ["kid", "has_expired"]
+
+    def has_change_permission(self, request: HttpRequest, obj: Optional[_ModelT] = ...) -> bool:
+        return False
 
 @admin.register(Scope)
 class ScopeAdmin(admin.ModelAdmin):
     fieldsets = [
-        [_(u''), {
+        [_(''), {
             'fields': ('scope', 'description'),
         }]
     ]

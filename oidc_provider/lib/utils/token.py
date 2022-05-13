@@ -17,12 +17,12 @@ from oidc_provider.lib.utils.common import (
 )
 from oidc_provider.lib.claims import StandardScopeClaims
 from oidc_provider.lib.errors import (
-    ClientIdError, 
+    ClientIdError,
     BearerTokenError
 )
 from oidc_provider.models import (
     Code,
-    RSAKey,
+    JWKKey,
     Token,
     Client,
 )
@@ -234,7 +234,7 @@ def get_client_alg_keys(client):
     """
     if client.jwt_alg == 'RS256':
         keys = []
-        for rsakey in RSAKey.objects.all():
+        for rsakey in JWKKey.objects.all():
             keys.append(jwk_RSAKey(key=importKey(rsakey.key), kid=rsakey.kid))
         if not keys:
             raise Exception('You must add at least one RSA Key.')

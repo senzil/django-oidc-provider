@@ -4,11 +4,7 @@ from hashlib import (
     sha256,
 )
 import logging
-try:
-    from urllib import urlencode
-    from urlparse import urlsplit, parse_qs, urlunsplit
-except ImportError:
-    from urllib.parse import urlsplit, parse_qs, urlunsplit, urlencode
+from urllib.parse import urlsplit, parse_qs, urlunsplit, urlencode
 from uuid import uuid4
 
 from django.utils import timezone
@@ -36,7 +32,6 @@ logger = logging.getLogger(__name__)
 
 
 class AuthorizeEndpoint(object):
-    _allowed_prompt_params = {'none', 'login', 'consent', 'select_account'}
     client_class = Client
 
     def __init__(self, request):
@@ -66,23 +61,50 @@ class AuthorizeEndpoint(object):
 
         See: http://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
         """
+
+        __allowed_prompt_params = {'none', 'login', 'consent', 'select_account'}
+        __allowed_display_params = {'page', 'popup', 'touch', 'wap'}
+
         # Because in this endpoint we handle both GET
         # and POST request.
         query_dict = (self.request.POST if self.request.method == 'POST'
                       else self.request.GET)
 
+        #REQUIRED
+        self.params['scope'] = query_dict.get('scope', '').split()
+        self.params['response_type'] = query_dict.get('response_type', '')
         self.params['client_id'] = query_dict.get('client_id', '')
         self.params['redirect_uri'] = query_dict.get('redirect_uri', '')
-        self.params['response_type'] = query_dict.get('response_type', '')
-        self.params['scope'] = query_dict.get('scope', '').split()
+        #HIGH RECOMMEND
         self.params['state'] = query_dict.get('state', '')
         self.params['nonce'] = query_dict.get('nonce', '')
 
-        self.params['prompt'] = self._allowed_prompt_params.intersection(
+
+        self.params['prompt'] = __allowed_prompt_params.intersection(
             set(query_dict.get('prompt', '').split()))
 
         self.params['code_challenge'] = query_dict.get('code_challenge', '')
         self.params['code_challenge_method'] = query_dict.get('code_challenge_method', '')
+
+        #Optional but No necesary and Not implemented
+        """ self.params['display'] = query_dict.get('display', '')
+        self.params['max_age'] = query_dict.get('max_age', '')
+        self.params['ui_locales'] = query_dict.get('ui_locales', '')
+        self.params['id_token_hint'] = query_dict.get('id_token_hint', '')
+        self.params['login_hint'] = query_dict.get('login_hint', '')
+        self.params['acr_values'] = query_dict.get('acr_values', '') """
+
+        #https://openid.net/specs/openid-connect-core-1_0.html#ImplicitAuthorizationEndpoint
+        #https://openid.net/specs/openid-connect-core-1_0.html#HybridAuthorizationEndpoint
+        #https://openid.net/specs/openid-connect-core-1_0.html#ClaimsLanguagesAndScripts
+        #https://openid.net/specs/openid-connect-core-1_0.html#ClaimsParameter
+        #https://openid.net/specs/openid-connect-core-1_0.html#JWTRequests
+        #https://openid.net/specs/openid-connect-core-1_0.html#RegistrationParameter
+
+        #Not Recommended
+        #self.params['response_mode'] = query_dict.get('response_mode', '')
+
+
 
     def validate_params(self):
         # Client validation.

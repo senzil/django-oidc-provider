@@ -1,4 +1,5 @@
 import importlib
+from msilib.schema import Property
 import random
 import string
 
@@ -17,6 +18,13 @@ class DefaultSettings(object):
         REQUIRED. Used to log the user in. By default Django's LOGIN_URL will be used.
         """
         return settings.LOGIN_URL
+
+    @Property
+    def OIDC_LOGIN_MULTI_ACCOUNT_URL(self):
+        """
+        OPTIONAL. Used to log the user in when the app support multi account.
+        """
+        return None
 
     @property
     def SITE_URL(self):
@@ -195,7 +203,7 @@ class DefaultSettings(object):
         Used to populate aud field into payload dict in case that you choice a jwt token response.
         """
         return 'oidc_provider.lib.utils.common.default_aud'
-    
+
     @property
     def OIDC_TOKEN_JWT_EXTRA_INFO(self):
         """

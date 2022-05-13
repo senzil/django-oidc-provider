@@ -12,16 +12,16 @@ with open("./oidc_provider/version.py") as fp:
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
-    name='senzil-django-oidc-provider',
+    name='django-rest-framework-oidc-provider',
     version=version['__version__'],
     packages=find_packages(),
     include_package_data=True,
     license='MIT License',
-    description='OpenID Connect Provider implementation for Django.',
+    description='OpenID Connect Provider implementation for Django and Django Rest Framework.',
     long_description='http://github.com/senzil/senzil-django-oidc-provider',
     url='http://github.com/senzil/senzil-django-oidc-provider',
-    author='Juan Ignacio Fiorentino',
-    author_email='juanifioren@gmail.com',
+    author='Pablo Daniel González',
+    author_email='pablodgonzalez@gmail.com',
     zip_safe=False,
     classifiers=[
         'Development Status :: 5 - Production/Stable',
@@ -30,12 +30,9 @@ setup(
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.8',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
     ],
@@ -46,6 +43,7 @@ setup(
     ],
 
     install_requires=[
+        'python_jwt>=3.3.2',
         'pyjwkest>=1.3.0',
     ],
 )

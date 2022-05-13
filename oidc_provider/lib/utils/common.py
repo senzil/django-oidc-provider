@@ -8,11 +8,8 @@ from django.utils.cache import patch_vary_headers
 
 from oidc_provider import settings
 
+from django.urls import reverse
 
-if django.VERSION >= (1, 11):
-    from django.urls import reverse
-else:
-    from django.core.urlresolvers import reverse
 
 
 def redirect(uri):

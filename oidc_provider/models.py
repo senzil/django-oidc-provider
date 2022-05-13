@@ -3,12 +3,76 @@ import base64
 import binascii
 from hashlib import md5, sha256
 import json
+from typing import Any, Iterable, Optional
 
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 from django.conf import settings
+from jwt import InvalidAlgorithmError
+import jwcrypto.jwk as jwk
 
+JWK_TYPE_CHOICES = [
+    ('OCT128', '(OCT128) 128 bit symmetric key'),
+    ('OCT256', '(OCT256) 256 bit symmetric key'),
+    ('OCT384', '(OCT384) 384 bit symmetric key'),
+    ('OCT512', '(OCT512) 512 bit symmetric key'),
+    ('RSA2048', '(RSA2048) RSA 2048 bits'),
+    ('RSA3072', '(RSA3072) RSA 3072 bits'),
+    ('RSA4096', '(RSA4096) RSA 4096 bits'),
+    ('EC256', '(EC256) Elliptic Curve using P-256'),
+    ('EC384', '(EC384) Elliptic Curve using P-384'),
+    ('EC521', '(EC521) Elliptic Curve using P-521'),
+    ('ECsecp256k1', '(ECsecp256k1) Elliptic Curve using secp256k1'),
+    ('OKPEd25519', '(OKPEd25519) Edwards Curve using Ed25519'),
+    ('OKPEd448', '(OKPEd448) Edwards Curve using Ed448'),
+    ('OKPX25519', '(OKPX25519) Edwards Curve using X25519'),
+    ('OKPX448', '(OKPX448) Edwards Curve using X448')
+]
+
+JWE_ALG_CHOICES = [
+    ('RSA-OAEP', '(RSA-OAEP) RSAES OAEP using default parameters'),
+    ('RSA-OAEP-256', '(RSA-OAEP-256) RSAES OAEP using SHA-256 and MGF1 with SHA-256'),
+    ('A128KW', '(A128KW) AES Key Wrap with default initial value using 128 bit key'),
+    ('A192KW', '(A192KW) AES Key Wrap with default initial value using 192 bit key'),
+    ('A256KW', '(A256KW) AES Key Wrap with default initial value using 256 bit key'),
+    ('dir', 'Direct use of a shared symmetric key as the CEK'),
+    ('ECDH-ES', 'Elliptic Curve Diffie-Hellman Ephemeral Static key agreement using Concat KDF'),
+    ('ECDH-ES+A128KW', 'ECDH-ES using Concat KDF and CEK wrapped with A128KW'),
+    ('ECDH-ES+A192KW', 'ECDH-ES using Concat KDF and CEK wrapped with A192KW'),
+    ('ECDH-ES+A256KW', 'ECDH-ES using Concat KDF and CEK wrapped with A256KW'),
+    ('A128GCMKW', 'Key wrapping with AES GCM using 128 bit key'),
+    ('A192GCMKW', 'Key wrapping with AES GCM using 192 bit key'),
+    ('A256GCMKW', 'Key wrapping with AES GCM using 256 bit key'),
+    ('PBES2-HS256+A128KW', 'PBES2 with HMAC SHA-256 and A128KW wrapping'),
+    ('PBES2-HS384+A192KW', 'PBES2 with HMAC SHA-384 and A192KW wrapping'),
+    ('PBES2-HS512+A256KW', 'PBES2 with HMAC SHA-512 and A256KW wrapping')
+]
+
+JWE_ENC_CHOICES = [
+    ('A128CBC-HS256', 'AES_128_CBC_HMAC_SHA_256 authenticated encryption algorithm'),
+    ('A192CBC-HS384', 'AES_192_CBC_HMAC_SHA_384 authenticated encryption algorithm'),
+    ('A256CBC-HS512', 'AES_256_CBC_HMAC_SHA_512 authenticated encryption algorithm'),
+    ('A128GCM', 'AES GCM using 128 bit key'),
+    ('A192GCM', 'AES GCM using 192 bit key'),
+    ('A256GCM', 'AES GCM using 256 bit key')
+]
+
+JWS_ALG_CHOICES = [
+    ('HS256', '(HS256) HMAC using SHA-256'),
+    ('HS384', '(HS384) HMAC using SHA-384'),
+    ('HS512', '(HS512) HMAC using SHA-512'),
+    ('RS256', '(RS256) RSASSA-PKCS-v1_5 using SHA-256'),
+    ('RS384', '(RS384) RSASSA-PKCS-v1_5 using SHA-384'),
+    ('RS512', '(RS512) RSASSA-PKCS-v1_5 using SHA-512'),
+    ('ES256', '(ES256) ECDSA using P-256 and SHA-256'),
+    ('ES384', '(ES384) ECDSA using P-384 and SHA-384'),
+    ('ES512', '(ES512) ECDSA using P-521 and SHA-512'),
+    ('PS256', '(PS256) RSASSA-PSS using SHA-256 and MGF1 with SHA-256'),
+    ('PS384', '(PS384) RSASSA-PSS using SHA-384 and MGF1 with SHA-384'),
+    ('PS512', '(PS512) RSASSA-PSS using SHA-512 and MGF1 with SHA-512'),
+    ('none ', '(none) No digital signature or MAC performed')
+]
 
 CLIENT_TYPE_CHOICES = [
     ('confidential', 'Confidential'),
@@ -16,7 +80,9 @@ CLIENT_TYPE_CHOICES = [
 ]
 
 RESPONSE_TYPE_CHOICES = [
+    ('none', 'none (Authorization None Flow)'),
     ('code', 'code (Authorization Code Flow)'),
+    ('token', 'token (Authorization Token Flow)'),
     ('id_token', 'id_token (Implicit Flow)'),
     ('id_token token', 'id_token token (Implicit Flow)'),
     ('code token', 'code token (Hybrid Flow)'),
@@ -29,6 +95,12 @@ JWT_ALGS = [
     ('RS256', 'RS256'),
 ]
 
+JWT_ALGS_AT = [
+    ('Opaque', 'None'),
+    ('HS256', 'HS256'),
+    ('RS256', 'RS256'),
+]
+
 GRANT_TYPES_CHOICES = [
     'implicit',
     'authorization_code',
@@ -37,33 +109,30 @@ GRANT_TYPES_CHOICES = [
     'refresh_token',
 ]
 
-
 class Scope(models.Model):
 
     scope = models.CharField(
         max_length=30,
         primary_key=True,
-        verbose_name=_(u'Scope')
+        verbose_name=_('Scope')
     )
     description = models.CharField(
         max_length=50,
     )
 
     class Meta:
-        verbose_name = _(u'Scope')
-        verbose_name_plural = _(u'Scopes')
+        verbose_name = _('Scope')
+        verbose_name_plural = _('Scopes')
 
     def __str__(self):
-        return u'{0}'.format(self.scope)
+        return f'{self.scope}'
 
     def __unicode__(self):
         return self.__str__()
 
-
 class ResponseTypeManager(models.Manager):
     def get_by_natural_key(self, value):
         return self.get(value=value)
-
 
 class ResponseType(models.Model):
     objects = ResponseTypeManager()
@@ -72,7 +141,7 @@ class ResponseType(models.Model):
         max_length=30,
         choices=RESPONSE_TYPE_CHOICES,
         unique=True,
-        verbose_name=_(u'Response Type Value'))
+        verbose_name=_('Response Type Value'))
     description = models.CharField(
         max_length=50,
     )
@@ -81,44 +150,133 @@ class ResponseType(models.Model):
         return self.value,  # natural_key must return tuple
 
     def __str__(self):
-        return u'{0}'.format(self.description)
-
+        return f'{self.description}'
 
 class Client(models.Model):
 
-    name = models.CharField(max_length=100, default='', verbose_name=_(u'Name'))
+    name = models.CharField(max_length=100, default='', verbose_name=_('Name'))
     owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL, verbose_name=_(u'Owner'), blank=True,
+        settings.AUTH_USER_MODEL, verbose_name=_('Owner'), blank=True,
         null=True, default=None, on_delete=models.SET_NULL, related_name='oidc_clients_set')
     client_type = models.CharField(
         max_length=30,
         choices=CLIENT_TYPE_CHOICES,
         default='confidential',
-        verbose_name=_(u'Client Type'),
-        help_text=_(u'<b>Confidential</b> clients are capable of maintaining the confidentiality'
+        verbose_name=_('Client Type'),
+        help_text=_('<b>Confidential</b> clients are capable of maintaining the confidentiality'
                     u' of their credentials. <b>Public</b> clients are incapable.'))
-    client_id = models.CharField(max_length=255, unique=True, verbose_name=_(u'Client ID'))
-    client_secret = models.CharField(max_length=255, blank=True, verbose_name=_(u'Client SECRET'))
+    client_id = models.CharField(max_length=255, unique=True, verbose_name=_('Client ID'))
+    client_secret = models.CharField(max_length=255, blank=True, verbose_name=_('Client SECRET'))
     response_types = models.ManyToManyField(ResponseType)
-    jwt_alg = models.CharField(
+
+    idtoken_alg = models.CharField(
         max_length=10,
         choices=JWT_ALGS,
         default='RS256',
-        verbose_name=_(u'JWT Algorithm'),
-        help_text=_(u'Algorithm used to encode ID Tokens.'))
-    date_created = models.DateField(auto_now_add=True, verbose_name=_(u'Date Created'))
+        verbose_name=_('JWT Algorithm'),
+        help_text=_('Algorithm used to encode ID Tokens.'))
+    idtoken_jwk_type = models.CharField(
+        max_length=11,
+        choices=JWK_TYPE_CHOICES,
+        default='RSA4096',
+        verbose_name=_('JWKKey to Sign the JWT Id Token'),
+        help_text=_('JWKKey to Sign the JWT Id Token headers.'))
+    idtoken_jwe_alg = models.CharField(
+        null=True,
+        max_length=18,
+        choices=JWE_ALG_CHOICES,
+        default='A128KW',
+        verbose_name=_('JWE Algorithm to Encrypt'),
+        help_text=_('Algorithm used to encrypt ID Tokens.'))
+    idtoken_jwe_enc = models.CharField(
+        null=True,
+        max_length=13,
+        choices=JWE_ENC_CHOICES,
+        default='A128CBC-HS256',
+        verbose_name=_('JWE Algorithm to Encode'),
+        help_text=_('Algorithm used to encrypt ID Tokens.'))
+
+    at_alg = models.CharField(
+        null=True,
+        max_length=10,
+        choices=JWT_ALGS_AT,
+        default='RS256',
+        verbose_name=_('Access Token JWT Algorithm'),
+        help_text=_('Algorithm used to encode Access Tokens.'))
+    at_jwk_type = models.CharField(
+        null=True,
+        max_length=11,
+        choices=JWK_TYPE_CHOICES,
+        default='RSA4096',
+        verbose_name=_('JWKKey to Sign the JWT Access Token'),
+        help_text=_('JWKKey to Sign the JWT Access Token.'))
+    at_jwe_alg = models.CharField(
+        null=True,
+        max_length=18,
+        choices=JWE_ALG_CHOICES,
+        default=None,
+        verbose_name=_('JWE Algorithm to Encrypt'),
+        help_text=_('Algorithm used to encrypt Access Token.'))
+    at_jwe_enc = models.CharField(
+        null=True,
+        max_length=13,
+        choices=JWE_ENC_CHOICES,
+        default=None,
+        verbose_name=_('JWE Algorithm to Encode'),
+        help_text=_('Algorithm used to encode JWE Access Tokens.'))
+
+    rt_alg = models.CharField(
+        null=True,
+        max_length=10,
+        choices=JWT_ALGS_AT,
+        default='RS256',
+        verbose_name=_('Refresh Token JWT Algorithm'),
+        help_text=_('Algorithm used to encode Refresh Tokens.'))
+    rt_jwk_type = models.CharField(
+        null=True,
+        max_length=11,
+        choices=JWK_TYPE_CHOICES,
+        default='RSA4096',
+        verbose_name=_('JWKKey to Sign the JWT Refresh Token'),
+        help_text=_('JWKKey to Sign the JWT Refresh Token.'))
+    rt_jwe_alg = models.CharField(
+        null=True,
+        max_length=18,
+        choices=JWE_ALG_CHOICES,
+        default=None,
+        verbose_name=_('JWE Algorithm to Encrypt'),
+        help_text=_('Algorithm used to encrypt Refresh Token.'))
+    rt_jwe_enc = models.CharField(
+        null=True,
+        max_length=13,
+        choices=JWE_ENC_CHOICES,
+        default=None,
+        verbose_name=_('JWE Algorithm to Encode'),
+        help_text=_('Algorithm used to encode JWE Refresh Tokens.'))
+
+    _redirect_uris = models.TextField(
+        default='', verbose_name=_('Redirect URIs'),
+        help_text=_('Enter each URI on a new line.'))
+
+    scope = models.ManyToManyField(Scope,
+        blank=True,
+        default=None,
+        verbose_name=_('Scopes'),
+        help_text=_('Specifies the authorized scope values for the client app.'))
+
+    date_created = models.DateField(auto_now_add=True, verbose_name=_('Date Created'))
     website_url = models.CharField(
-        max_length=255, blank=True, default='', verbose_name=_(u'Website URL'))
+        max_length=255, blank=True, default='', verbose_name=_('Website URL'))
     terms_url = models.CharField(
         max_length=255,
         blank=True,
         default='',
-        verbose_name=_(u'Terms URL'),
-        help_text=_(u'External reference to the privacy policy of the client.'))
+        verbose_name=_('Terms URL'),
+        help_text=_('External reference to the privacy policy of the client.'))
     contact_email = models.CharField(
-        max_length=255, blank=True, default='', verbose_name=_(u'Contact Email'))
+        max_length=255, blank=True, default='', verbose_name=_('Contact Email'))
     logo = models.FileField(
-        blank=True, default='', upload_to='oidc_provider/clients', verbose_name=_(u'Logo Image'))
+        blank=True, default='', upload_to='oidc_provider/clients', verbose_name=_('Logo Image'))
     reuse_consent = models.BooleanField(
         default=True,
         verbose_name=_('Reuse Consent?'),
@@ -128,26 +286,19 @@ class Client(models.Model):
         default=True,
         verbose_name=_('Require Consent?'),
         help_text=_('If disabled, the Server will NEVER ask the user for consent.'))
-    _redirect_uris = models.TextField(
-        default='', verbose_name=_(u'Redirect URIs'),
-        help_text=_(u'Enter each URI on a new line.'))
+
     _post_logout_redirect_uris = models.TextField(
         blank=True,
         default='',
-        verbose_name=_(u'Post Logout Redirect URIs'),
-        help_text=_(u'Enter each URI on a new line.'))
-    scope = models.ManyToManyField(Scope,
-        blank=True,
-        default=None,
-        verbose_name=_(u'Scopes'),
-        help_text=_('Specifies the authorized scope values for the client app.'))
+        verbose_name=_('Post Logout Redirect URIs'),
+        help_text=_('Enter each URI on a new line.'))
 
     class Meta:
-        verbose_name = _(u'Client')
-        verbose_name_plural = _(u'Clients')
+        verbose_name = _('Client')
+        verbose_name_plural = _('Clients')
 
     def __str__(self):
-        return u'{0}'.format(self.name)
+        return f'{self.name}'
 
     def __unicode__(self):
         return self.__str__()
@@ -187,12 +338,11 @@ class Client(models.Model):
     def default_redirect_uri(self):
         return self.redirect_uris[0] if self.redirect_uris else ''
 
-
 class BaseCodeTokenModel(models.Model):
 
-    client = models.ForeignKey(Client, verbose_name=_(u'Client'), on_delete=models.CASCADE)
-    expires_at = models.DateTimeField(verbose_name=_(u'Expiration Date'))
-    _scope = models.TextField(default='', verbose_name=_(u'Scopes'))
+    client = models.ForeignKey(Client, verbose_name=_('Client'), on_delete=models.CASCADE)
+    expires_at = models.DateTimeField(verbose_name=_('Expiration Date'))
+    _scope = models.TextField(default='', verbose_name=_('Scopes'))
 
     class Meta:
         abstract = True
@@ -211,37 +361,35 @@ class BaseCodeTokenModel(models.Model):
     def has_expired(self):
         return timezone.now() >= self.expires_at
 
-
 class Code(BaseCodeTokenModel):
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, verbose_name=_(u'User'), on_delete=models.CASCADE)
-    code = models.CharField(max_length=255, unique=True, verbose_name=_(u'Code'))
-    nonce = models.CharField(max_length=255, blank=True, default='', verbose_name=_(u'Nonce'))
-    is_authentication = models.BooleanField(default=False, verbose_name=_(u'Is Authentication?'))
-    code_challenge = models.CharField(max_length=255, null=True, verbose_name=_(u'Code Challenge'))
+        settings.AUTH_USER_MODEL, verbose_name=_('User'), on_delete=models.CASCADE)
+    code = models.CharField(max_length=255, unique=True, verbose_name=_('Code'))
+    nonce = models.CharField(max_length=255, blank=True, default='', verbose_name=_('Nonce'))
+    is_authentication = models.BooleanField(default=False, verbose_name=_('Is Authentication?'))
+    code_challenge = models.CharField(max_length=255, null=True, verbose_name=_('Code Challenge'))
     code_challenge_method = models.CharField(
-        max_length=255, null=True, verbose_name=_(u'Code Challenge Method'))
+        max_length=255, null=True, verbose_name=_('Code Challenge Method'))
 
     class Meta:
-        verbose_name = _(u'Authorization Code')
-        verbose_name_plural = _(u'Authorization Codes')
+        verbose_name = _('Authorization Code')
+        verbose_name_plural = _('Authorization Codes')
 
     def __str__(self):
-        return u'{0} - {1}'.format(self.client, self.code)
-
+        return f'{self.client} - {self.code}'
 
 class Token(BaseCodeTokenModel):
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, null=True, verbose_name=_(u'User'), on_delete=models.CASCADE)
-    access_token = models.CharField(max_length=255, unique=True, verbose_name=_(u'Access Token'))
-    refresh_token = models.CharField(max_length=255, unique=True, verbose_name=_(u'Refresh Token'))
-    _id_token = models.TextField(verbose_name=_(u'ID Token'))
+        settings.AUTH_USER_MODEL, null=True, verbose_name=_('User'), on_delete=models.CASCADE)
+    access_token = models.CharField(max_length=255, unique=True, verbose_name=_('Access Token'))
+    refresh_token = models.CharField(max_length=255, unique=True, verbose_name=_('Refresh Token'))
+    _id_token = models.TextField(verbose_name=_('ID Token'))
 
     class Meta:
-        verbose_name = _(u'Token')
-        verbose_name_plural = _(u'Tokens')
+        verbose_name = _('Token')
+        verbose_name_plural = _('Tokens')
 
     @property
     def id_token(self):
@@ -252,7 +400,7 @@ class Token(BaseCodeTokenModel):
         self._id_token = json.dumps(value)
 
     def __str__(self):
-        return u'{0} - {1}'.format(self.client, self.access_token)
+        return '{0} - {1}'.format(self.client, self.access_token)
 
     @property
     def at_hash(self):
@@ -266,32 +414,72 @@ class Token(BaseCodeTokenModel):
             )
         ).rstrip(b'=').decode('ascii')
 
-
 class UserConsent(BaseCodeTokenModel):
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, verbose_name=_(u'User'), on_delete=models.CASCADE)
-    date_given = models.DateTimeField(verbose_name=_(u'Date Given'))
+        settings.AUTH_USER_MODEL, verbose_name=_('User'), on_delete=models.CASCADE)
+    date_given = models.DateTimeField(verbose_name=_('Date Given'))
 
     class Meta:
         unique_together = ('user', 'client')
 
+class JWKKey(models.Model):
 
-class RSAKey(models.Model):
+    date_created = models.DateField(auto_now_add=True, verbose_name=_('Date Created'))
+    key_type = models.CharField(
+        max_length=30,
+        choices=JWK_TYPE_CHOICES,
+        default='ES256',
+        verbose_name=_('Key Type'),
+        help_text=_('Specifies the cryptographic asymetric algorithms to sign the JWT Tokens'))
+    key = models.TextField( blank=True,
+        verbose_name=_('Key'), help_text=_('Paste your private Key here.'))
+    valid_from = models.DateTimeField(default=timezone.now, verbose_name=_('Valid From'))
+    expires_at = models.DateTimeField(blank=True, default=None, null=True, verbose_name=_('Expiration Date'))
 
-    key = models.TextField(
-        verbose_name=_(u'Key'), help_text=_(u'Paste your private RSA Key here.'))
+    def save(self, force_insert: bool=False, force_update: bool=False, using: Optional[str]=None, update_fields: Optional[Iterable[str]]=None) -> None:
+        self.__generate_key()
+        return super().save(force_insert, force_update, using, update_fields)
+
+    def delete(self, using: Any = None, keep_parents: bool = False) -> None:
+        self.expires_at = timezone.now()
+        self.save()
+
+    __key_generators = {
+        "OCT128": lambda: jwk.JWK.generate(kty='oct', size=128),
+        "OCT256": lambda: jwk.JWK.generate(kty='oct', size=256),
+        "OCT384": lambda: jwk.JWK.generate(kty='oct', size=384),
+        "OCT512": lambda: jwk.JWK.generate(kty='oct', size=512),
+        "RSA2048": lambda: jwk.JWK.generate(kty='RSA', size=2048),
+        "RSA3072": lambda: jwk.JWK.generate(kty='RSA', size=3072),
+        "RSA4096": lambda: jwk.JWK.generate(kty='RSA', size=4096),
+        "EC256": lambda: jwk.JWK.generate(kty='EC', crv='P-256'),
+        "EC384": lambda: jwk.JWK.generate(kty='EC', crv='P-238'),
+        "EC521": lambda: jwk.JWK.generate(kty='EC', crv='P-521'),
+        "ECsecp256k1": lambda: jwk.JWK.generate(kty='EC', crv='secp256k1'),
+        "OKPEd25519": lambda: jwk.JWK.generate(kty='OKP', crv='Ed25519'),
+        "OKPEd448": lambda: jwk.JWK.generate(kty='OKP', crv='Ed448'),
+        "OKPX25519": lambda: jwk.JWK.generate(kty='OKP', crv='X25519'),
+        "OKPX448": lambda: jwk.JWK.generate(kty='OKP', crv='X448')
+    }
+
+    def __generate_key(self):
+        if self.key is None:
+            self.key = self.__key_generators.get(self.key_type, lambda: (_ for _ in ()).throw(InvalidAlgorithmError(self.key_type)))().export()
 
     class Meta:
-        verbose_name = _(u'RSA Key')
-        verbose_name_plural = _(u'RSA Keys')
+        verbose_name = _('JWK Key')
+        verbose_name_plural = _('JWK Keys')
 
     def __str__(self):
-        return u'{0}'.format(self.kid)
+        return '{0}'.format(self.kid)
 
     def __unicode__(self):
         return self.__str__()
 
     @property
     def kid(self):
-        return u'{0}'.format(md5(self.key.encode('utf-8')).hexdigest() if self.key else '')
+        return f'{md5(self.key.encode("utf-8")).hexdigest()}' if self.key else ''
+
+    def has_expired(self):
+        return self.expires_at is not None and timezone.now() >= self.expires_at
