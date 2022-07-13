@@ -1,8 +1,18 @@
+from distutils.log import error
+import errno
+
+
 try:
     from urllib.parse import quote
 except ImportError:
     from urllib import quote
 
+
+class JWEPrivateError(Exception):
+
+    error =  "The JWK Key Set can't be exported with private values"
+    description = "It is not possible access to private information from JWK Kyes used for" \
+        " JWE algorithms"
 
 class RedirectUriError(Exception):
 

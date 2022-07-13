@@ -1,3 +1,4 @@
+from http import client
 import inspect
 from base64 import urlsafe_b64encode
 import hashlib
@@ -6,18 +7,20 @@ from django.contrib.auth import authenticate
 
 from django.http import JsonResponse
 
-from oidc_provider.lib.errors import (
+from ..token.access_token import AccessToken
+
+from ..errors import (
     TokenError,
     UserAuthError,
 )
-from oidc_provider.lib.utils.oauth2 import extract_client_auth
-from oidc_provider.lib.utils.token import (
+from ..utils.oauth2 import extract_client_auth
+from ..utils.token import (
     create_id_token,
     create_token,
     encode_jwt,
     access_token_format,
 )
-from oidc_provider.models import (
+from ...models import (
     Client,
     Code,
     Token,
@@ -285,6 +288,8 @@ class TokenEndpoint(object):
             scope=self.client._scope.split())
 
         token.save()
+
+        access_token = AccessToken(client=self.client, token=token)
 
         access_token = access_token_format(
             token=token,

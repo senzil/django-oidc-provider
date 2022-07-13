@@ -16,7 +16,7 @@ from oidc_provider.lib.utils.token import (
     get_plain_access_token,
     wrapper_decode_jwt,
 )
-from oidc_provider.models import Token
+from ...models import Token
 
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ def extract_authorization_token(request):
         access_token = auth_header.split()[1]
     else:
         access_token = request.GET.get('access_token', '')
-    
+
     return access_token
 
 
@@ -47,7 +47,7 @@ def extract_access_token(request):
 
     Return a string.
     """
-    
+
     access_token = extract_authorization_token(request)
 
     try:
@@ -116,7 +116,7 @@ def set_token_in_request(request):
 def get_view_methods(view):
     #for drf compatibility
     drf_viewset_mappings = [
-        'list', 
+        'list',
         'retrieve',
         'create',
         'update',
@@ -140,23 +140,23 @@ def protected_resource_view(scopes=None):
         scopes = []
 
     def wrapper_method(view_method):
-        
+
         args_name = inspect.getargspec(view_method)[0]
         if not 'request' in args_name:
             raise RuntimeError(
                     "This decorator can only work with django (or drf) view methods " \
                     "with the \"request\" parameter as first or second argument. " \
                     "Examples: def action  (request, *args, **kwargs) or def action(self, request, *args, **kwargs)")
-        
+
         if not hasattr(view_method, 'kwargs'):
             view_method.kwargs = {}
         if not 'required_scopes' in view_method.kwargs:
             view_method.kwargs['required_scopes'] = set()
         view_method.kwargs['required_scopes'].update(scopes)
-        
+
         @wraps(view_method)
         def view_wrapper(*args, **kwargs):
-            
+
             request = args[args_name.index('request')]
 
             set_token_in_request(request)

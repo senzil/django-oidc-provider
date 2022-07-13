@@ -1,10 +1,14 @@
 import importlib
-from msilib.schema import Property
 import random
 import string
+from typing import Any, Dict
 
 from django.conf import settings
+from rest_framework.settings import APISettings
 
+OIDC_PROVIDER_DEFAULTS: Dict[str, Any] = {
+
+}OIDC_ACCESS_TOKEN_ENCODE
 
 class DefaultSettings(object):
     required_attrs = ()
@@ -19,7 +23,7 @@ class DefaultSettings(object):
         """
         return settings.LOGIN_URL
 
-    @Property
+    @property
     def OIDC_LOGIN_MULTI_ACCOUNT_URL(self):
         """
         OPTIONAL. Used to log the user in when the app support multi account.

@@ -1,3 +1,4 @@
+from importlib.resources import Package
 import os
 from setuptools import (
     find_packages,
@@ -12,12 +13,14 @@ with open("./oidc_provider/version.py") as fp:
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
-    name='django-rest-framework-oidc-provider',
+    name='drf-oidc-provider',
+    package='drf_oicd_provider'
     version=version['__version__'],
+    description='OpenID Connect Provider implementation for Django and Django Rest Framework.',
+
     packages=find_packages(),
     include_package_data=True,
     license='MIT License',
-    description='OpenID Connect Provider implementation for Django and Django Rest Framework.',
     long_description='http://github.com/senzil/senzil-django-oidc-provider',
     url='http://github.com/senzil/senzil-django-oidc-provider',
     author='Pablo Daniel González',
@@ -38,12 +41,10 @@ setup(
     ],
     test_suite='runtests.runtests',
     tests_require=[
-        'pyjwkest>=1.3.0',
         'mock>=2.0.0',
     ],
 
     install_requires=[
         'python_jwt>=3.3.2',
-        'pyjwkest>=1.3.0',
     ],
 )
