@@ -141,7 +141,7 @@ def protected_resource_view(scopes=None):
 
     def wrapper_method(view_method):
         
-        args_name = inspect.getargspec(view_method)[0]
+        args_name = inspect.getfullargspec(view_method)[0]
         if not 'request' in args_name:
             raise RuntimeError(
                     "This decorator can only work with django (or drf) view methods " \
