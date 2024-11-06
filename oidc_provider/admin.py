@@ -6,13 +6,13 @@ from django.forms import ModelForm
 from django.contrib import admin
 from django.utils.translation import ugettext_lazy as _
 
-from oidc_provider.models import Client, Code, Token, RSAKey, Scope
+from oidc_provider.models import Client, Code, Token, RSAKey, Scope, ClientV2
 
 
 class ClientForm(ModelForm):
 
     class Meta:
-        model = Client
+        model = ClientV2
         exclude = []
 
     def __init__(self, *args, **kwargs):
@@ -46,14 +46,14 @@ class ClientForm(ModelForm):
         return secret
 
 
-@admin.register(Client)
+@admin.register(ClientV2)
 class ClientAdmin(admin.ModelAdmin):
 
     fieldsets = [
         [_(u''), {
             'fields': (
                 'name', 'owner', 'client_type', 'response_types', '_redirect_uris', 'jwt_alg',
-                'require_consent', 'reuse_consent'),
+                'require_consent', 'reuse_consent', 'company'),
         }],
         [_(u'Credentials'), {
             'fields': ('client_id', 'client_secret', 'scope'),

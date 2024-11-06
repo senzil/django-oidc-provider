@@ -188,6 +188,12 @@ class Client(models.Model):
         return self.redirect_uris[0] if self.redirect_uris else ''
 
 
+
+class ClientV2(Client):
+    company = models.ForeignKey(verbose_name=_(u'Company'), blank=True,
+        null=True, default=None, on_delete=models.SET_NULL)
+    
+
 class BaseCodeTokenModel(models.Model):
 
     client = models.ForeignKey(Client, verbose_name=_(u'Client'), on_delete=models.CASCADE)
