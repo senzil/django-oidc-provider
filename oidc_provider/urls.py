@@ -1,7 +1,4 @@
-try:
-    from django.urls import url
-except ImportError:
-    from django.conf.urls import url
+from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
 
 from oidc_provider import (
@@ -11,18 +8,18 @@ from oidc_provider import (
 
 app_name = 'oidc_provider'
 urlpatterns = [
-    url(r'^authorize/?$', views.AuthorizeView.as_view(), name='authorize'),
-    url(r'^token/?$', csrf_exempt(views.TokenView.as_view()), name='token'),
-    url(r'^userinfo/?$', csrf_exempt(views.userinfo), name='userinfo'),
-    url(r'^end-session/?$', views.EndSessionView.as_view(), name='end-session'),
-    url(r'^\.well-known/openid-configuration/?$', views.ProviderInfoView.as_view(),
+    path('authorize/', views.AuthorizeView.as_view(), name='authorize'),
+    path('token/', csrf_exempt(views.TokenView.as_view()), name='token'),
+    path('userinfo/', csrf_exempt(views.userinfo), name='userinfo'),
+    path('end-session/', views.EndSessionView.as_view(), name='end-session'),
+    path('.well-known/openid-configuration/', views.ProviderInfoView.as_view(),
         name='provider-info'),
-    url(r'^introspect/?$', views.TokenIntrospectionView.as_view(), name='token-introspection'),
-    url(r'^jwks/?$', views.JwksView.as_view(), name='jwks'),
+    path('introspect/', views.TokenIntrospectionView.as_view(), name='token-introspection'),
+    path('jwks/', views.JwksView.as_view(), name='jwks'),
 ]
 
 if settings.get('OIDC_SESSION_MANAGEMENT_ENABLE'):
     urlpatterns += [
-        url(r'^check-session-iframe/?$', views.CheckSessionIframeView.as_view(),
+        path('check-session-iframe/', views.CheckSessionIframeView.as_view(),
             name='check-session-iframe'),
     ]

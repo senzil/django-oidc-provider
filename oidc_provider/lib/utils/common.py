@@ -196,7 +196,7 @@ def cors_allow_any(request, response):
 
 
 def cors_allowed(function):
-    args_name = inspect.getargspec(function)[0]
+    args_name = inspect.getfullargspec(function)[0]
     @wraps(function)
     def wrapper_method(*args, **kwargs):
         request = args[args_name.index('request')]
