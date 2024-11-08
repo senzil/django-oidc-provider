@@ -90,6 +90,8 @@ class Client(models.Model):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name=_(u'Owner'), blank=True,
         null=True, default=None, on_delete=models.SET_NULL, related_name='oidc_clients_set')
+    company = models.ForeignKey('main.Company', verbose_name=_(u'Company'), blank=True,
+        null=True, default=None, on_delete=models.SET_NULL)
     client_type = models.CharField(
         max_length=30,
         choices=CLIENT_TYPE_CHOICES,
@@ -186,13 +188,6 @@ class Client(models.Model):
     @property
     def default_redirect_uri(self):
         return self.redirect_uris[0] if self.redirect_uris else ''
-
-
-
-class ClientV2(Client):
-    company = models.ForeignKey('cas.Company', verbose_name=_(u'Company'), blank=True,
-        null=True, default=None, on_delete=models.SET_NULL)
-    
 
 class BaseCodeTokenModel(models.Model):
 
