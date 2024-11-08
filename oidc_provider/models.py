@@ -6,7 +6,7 @@ import json
 
 from django.db import models
 from django.utils import timezone
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 
 
@@ -190,7 +190,7 @@ class Client(models.Model):
 
 
 class ClientV2(Client):
-    company = models.ForeignKey(verbose_name=_(u'Company'), blank=True,
+    company = models.ForeignKey('cas.Company', verbose_name=_(u'Company'), blank=True,
         null=True, default=None, on_delete=models.SET_NULL)
     
 
