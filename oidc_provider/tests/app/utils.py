@@ -11,6 +11,7 @@ except ImportError:
 
 from django.utils import timezone
 from django.contrib.auth.models import User
+from oidc_provider.lib.utils.common import get_client_model
 
 from oidc_provider.models import (
     Client,
@@ -51,7 +52,7 @@ def create_fake_client(response_type, is_public=False, require_consent=True):
 
     Return a Client object.
     """
-    client = Client()
+    client = get_client_model()
     client.name = 'Some Client'
     client.client_id = str(random.randint(1, 999999)).zfill(6)
     if is_public:

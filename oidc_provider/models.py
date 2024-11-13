@@ -84,14 +84,12 @@ class ResponseType(models.Model):
         return u'{0}'.format(self.description)
 
 
-class Client(models.Model):
+class AbstractClient(models.Model):
 
     name = models.CharField(max_length=100, default='', verbose_name=_(u'Name'))
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name=_(u'Owner'), blank=True,
         null=True, default=None, on_delete=models.SET_NULL, related_name='oidc_clients_set')
-    company = models.ForeignKey('main.Company', verbose_name=_(u'Company'), blank=True,
-        null=True, default=None, on_delete=models.SET_NULL)
     client_type = models.CharField(
         max_length=30,
         choices=CLIENT_TYPE_CHOICES,
@@ -145,8 +143,7 @@ class Client(models.Model):
         help_text=_('Specifies the authorized scope values for the client app.'))
 
     class Meta:
-        verbose_name = _(u'Client')
-        verbose_name_plural = _(u'Clients')
+        abstract = True
 
     def __str__(self):
         return u'{0}'.format(self.name)
@@ -188,6 +185,43 @@ class Client(models.Model):
     @property
     def default_redirect_uri(self):
         return self.redirect_uris[0] if self.redirect_uris else ''
+    
+
+
+class Client(AbstractClient):
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name=_('Owner'),
+        blank=True,
+        null=True,
+        default=None,
+        on_delete=models.SET_NULL,
+        related_name='oidc_owned_clients' 
+    )
+
+
+    response_types = models.ManyToManyField(
+        ResponseType,
+        related_name='oidc_clients' 
+    )
+    scope = models.ManyToManyField(
+        Scope,
+        blank=True,
+        default=None,
+        verbose_name=_('Scopes'),
+        help_text=_('Specifies the authorized scope values for the client app.'),
+        related_name='oidc_clients' 
+    )   
+
+
+    class Meta:
+        verbose_name = _(u'Client')
+        verbose_name_plural = _(u'Clients')
+        db_table = 'oidc_provider_client'
+
+
+
+
 
 class BaseCodeTokenModel(models.Model):
 

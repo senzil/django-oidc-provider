@@ -59,6 +59,12 @@ def timestamp_to_datetime(timestamp):
 
 
 class TokenTest(TestCase):
+
+    databases = {
+        'default',
+        'readonly'
+    }
+
     def setUp(self):
         self.user = create_fake_user()
 
@@ -79,7 +85,7 @@ class TokenTest(TestCase):
             'auth_time': login_timestamp,
             'exp': iat + 600,
             'iat': iat,
-            'iss': 'http://localhost:8000/openid',
+            'iss': 'http://127.0.0.1:8000/openid',
             'sub': str(self.user.id),
         })
 

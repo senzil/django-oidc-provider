@@ -45,7 +45,8 @@ from oidc_provider.lib.utils.common import (
     get_site_url,
     get_issuer,
     cors_allow_any,
-    cors_allowed
+    cors_allowed,
+    get_client_model
 )
 from oidc_provider.lib.utils.oauth2 import protected_resource_view
 from oidc_provider.lib.utils.token import client_id_from_id_token
@@ -334,7 +335,10 @@ class EndSessionView(LogoutView):
         if id_token_hint:
             client_id = client_id_from_id_token(id_token_hint)
             try:
-                client = Client.objects.get(client_id=client_id)
+                
+                #Usa get_client_model para 
+                client_model = get_client_model()
+                client = client_model.objects.get(client_id=client_id)
                 if post_logout_redirect_uri in client.post_logout_redirect_uris:
                     if state:
                         uri = urlsplit(post_logout_redirect_uri)

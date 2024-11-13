@@ -5,7 +5,8 @@ from hashlib import sha224
 import django
 from django.http import HttpResponse
 from django.utils.cache import patch_vary_headers
-
+from django.conf import settings
+from django.apps import apps
 from oidc_provider import settings
 
 
@@ -216,3 +217,9 @@ def decode_base64(data, altchars=b'+/'):
     if missing_padding:
         data += '=' * (4 - missing_padding)
     return base64.b64decode(data, altchars).decode("utf-8")
+
+
+def get_client_model():
+    client_model = getattr(settings, 'OIDC_PROVIDER_CLIENT_MODEL', 'oidc_provider.Client')
+    client = apps.get_model(client_model)
+    return client()
