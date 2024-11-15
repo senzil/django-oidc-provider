@@ -219,7 +219,11 @@ def decode_base64(data, altchars=b'+/'):
     return base64.b64decode(data, altchars).decode("utf-8")
 
 
-def get_client_model():
-    client_model = getattr(settings, 'OIDC_PROVIDER_CLIENT_MODEL', 'oidc_provider.Client')
-    client = apps.get_model(client_model)
-    return client()
+def get_client_model(create_instance=False, **kwargs):
+    client = getattr(settings.settings, 'OIDC_PROVIDER_CLIENT_MODEL', 'oidc_provider.Client')
+    client_model = apps.get_model(client)
+    
+    if create_instance:
+        return client_model(**kwargs)
+    
+    return client_model

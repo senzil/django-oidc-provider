@@ -52,7 +52,7 @@ def create_fake_client(response_type, is_public=False, require_consent=True):
 
     Return a Client object.
     """
-    client = get_client_model()
+    client = get_client_model(create_instance=True)
     client.name = 'Some Client'
     client.client_id = str(random.randint(1, 999999)).zfill(6)
     if is_public:

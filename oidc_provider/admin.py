@@ -6,13 +6,14 @@ from django.forms import ModelForm
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 
-from oidc_provider.models import Client, Code, Token, RSAKey, Scope
+from oidc_provider.models import Code, Token, RSAKey, Scope
+from oidc_provider.lib.utils.common import get_client_model
 
 
 class ClientForm(ModelForm):
 
     class Meta:
-        model = Client
+        model = get_client_model()
         exclude = []
 
     def __init__(self, *args, **kwargs):
@@ -46,13 +47,13 @@ class ClientForm(ModelForm):
         return secret
 
 
-@admin.register(Client)
+@admin.register(get_client_model())
 class ClientAdmin(admin.ModelAdmin):
 
     fieldsets = [
         [_(u''), {
             'fields': (
-                'name', 'owner', 'company', 'client_type', 'response_types', '_redirect_uris', 'jwt_alg',
+                'name', 'owner', 'client_type', 'response_types', '_redirect_uris', 'jwt_alg',
                 'require_consent', 'reuse_consent'),
         }],
         [_(u'Credentials'), {
@@ -70,6 +71,31 @@ class ClientAdmin(admin.ModelAdmin):
     readonly_fields = ['date_created']
     search_fields = ['name']
     raw_id_fields = ['owner']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        
+        defined_fields = set()
+        for fieldset in self.fieldsets:
+            defined_fields.update(fieldset[1]['fields'])
+
+        # Obtiene todos los campos del modelo retornado por get_client_model
+        dynamic_model_fields = set(field.name for field in self.model._meta.get_fields())
+
+        # Compara y revisa si hay campos adicionales en el modelo usado
+        additional_fields = dynamic_model_fields - defined_fields
+
+        # Excluye campos "clientscope" e "id" si existen
+        additional_fields = {
+            field for field in additional_fields
+            if field not in {'clientscope', 'id'}
+        }
+
+        # Incluye los campos adicionales
+        if additional_fields:
+            main_fields = list(self.fieldsets[0][1]['fields'])
+            self.fieldsets[0][1]['fields'] = tuple(main_fields + list(additional_fields))
 
 
 @admin.register(Code)

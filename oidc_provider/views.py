@@ -337,7 +337,7 @@ class EndSessionView(LogoutView):
             try:
                 
                 #Usa get_client_model para 
-                client_model = get_client_model()
+                client_model = get_client_model(create_instance=True)
                 client = client_model.objects.get(client_id=client_id)
                 if post_logout_redirect_uri in client.post_logout_redirect_uris:
                     if state:
