@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 from django.views.decorators.csrf import csrf_exempt
 
 from oidc_provider import (
@@ -8,18 +8,18 @@ from oidc_provider import (
 
 app_name = 'oidc_provider'
 urlpatterns = [
-    path('authorize/', views.AuthorizeView.as_view(), name='authorize'),
-    path('token/', csrf_exempt(views.TokenView.as_view()), name='token'),
-    path('userinfo/', csrf_exempt(views.userinfo), name='userinfo'),
-    path('end-session/', views.EndSessionView.as_view(), name='end-session'),
-    path('.well-known/openid-configuration/', views.ProviderInfoView.as_view(),
+    re_path(r'^authorize/?$', views.AuthorizeView.as_view(), name='authorize'),
+    re_path(r'^token/?$', csrf_exempt(views.TokenView.as_view()), name='token'),
+    re_path(r'^userinfo/?$', csrf_exempt(views.userinfo), name='userinfo'),
+    re_path(r'^end-session/?$', views.EndSessionView.as_view(), name='end-session'),
+    re_path(r'^.well-known/openid-configuration/?$', views.ProviderInfoView.as_view(),
         name='provider-info'),
-    path('introspect/', views.TokenIntrospectionView.as_view(), name='token-introspection'),
-    path('jwks/', views.JwksView.as_view(), name='jwks'),
+    re_path(r'^introspect/?$', views.TokenIntrospectionView.as_view(), name='token-introspection'),
+    re_path(r'^jwks/?$', views.JwksView.as_view(), name='jwks'),
 ]
 
 if settings.get('OIDC_SESSION_MANAGEMENT_ENABLE'):
     urlpatterns += [
-        path('check-session-iframe/', views.CheckSessionIframeView.as_view(),
+        re_path(r'^check-session-iframe/?$', views.CheckSessionIframeView.as_view(),
             name='check-session-iframe'),
     ]
