@@ -30,14 +30,14 @@ from oidc_provider.models import (
     UserConsent,
 )
 from oidc_provider import settings
-from oidc_provider.lib.utils.common import get_browser_state_or_default
+from oidc_provider.lib.utils.common import get_browser_state_or_default, get_client_model
 
 logger = logging.getLogger(__name__)
 
 
 class AuthorizeEndpoint(object):
     _allowed_prompt_params = {'none', 'login', 'consent', 'select_account'}
-    client_class = Client
+    client_class = get_client_model()
 
     def __init__(self, request):
         self.request = request

@@ -3,7 +3,7 @@ import logging
 from django.http import JsonResponse
 
 from oidc_provider.lib.errors import TokenIntrospectionError
-from oidc_provider.lib.utils.common import run_processing_hook
+from oidc_provider.lib.utils.common import run_processing_hook, get_client_model
 from oidc_provider.lib.utils.oauth2 import extract_client_auth
 from oidc_provider.models import Token, Client
 from oidc_provider import settings
@@ -14,6 +14,8 @@ INTROSPECTION_SCOPE = 'token_introspection'
 
 
 class TokenIntrospectionEndpoint(object):
+    client_class = get_client_model()
+
 
     def __init__(self, request):
         self.request = request
@@ -47,7 +49,7 @@ class TokenIntrospectionEndpoint(object):
             raise TokenIntrospectionError()
 
         try:
-            self.client = Client.objects.get(
+            self.client = self.client_class.objects.get(
                 client_id=self.params['client_id'],
                 client_secret=self.params['client_secret'])
         except Client.DoesNotExist:
