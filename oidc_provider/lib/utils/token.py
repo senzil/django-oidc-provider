@@ -14,6 +14,7 @@ from oidc_provider.lib.utils.common import (
     get_issuer,
     run_processing_hook,
     decode_base64,
+    get_client_model
 )
 from oidc_provider.lib.claims import StandardScopeClaims
 from oidc_provider.lib.errors import (
@@ -178,7 +179,8 @@ def wrapper_decode_jwt(access_token_jwt):
 
     try:
         payload_json = json.loads(not_verified_payload)
-        client = Client.objects.get(client_id=payload_json['client_id'])
+        client_class = get_client_model()
+        client = client_class.objects.get(client_id=payload_json['client_id'])
     except Client.DoesNotExist:
         raise ClientIdError()
 

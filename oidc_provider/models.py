@@ -225,7 +225,7 @@ class Client(AbstractClient):
 
 class BaseCodeTokenModel(models.Model):
 
-    client = models.ForeignKey(Client, verbose_name=_(u'Client'), on_delete=models.CASCADE)
+    client = models.ForeignKey(getattr(settings, 'OIDC_PROVIDER_CLIENT_MODEL', 'oidc_provider.Client'), verbose_name=_(u'Client'), on_delete=models.CASCADE)
     expires_at = models.DateTimeField(verbose_name=_(u'Expiration Date'))
     _scope = models.TextField(default='', verbose_name=_(u'Scopes'))
 

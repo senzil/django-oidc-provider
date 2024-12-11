@@ -132,66 +132,66 @@ def get_view_methods(view):
 
 def protected_resource_view(scopes=None):
     """
-    View decorator. The client accesses protected resources by presenting the
-    access token to the resource server.
-    https://tools.ietf.org/html/rfc6749#section-7
+    Decorador que protege recursos asegurando que se presenten los scopes requeridos.
+    Compatible con funciones, CBVs y ViewSets.
     """
     if scopes is None:
         scopes = []
 
-    def wrapper_method(view_method):
-        
-        args_name = inspect.getfullargspec(view_method)[0]
-        if not 'request' in args_name:
-            raise RuntimeError(
-                    "This decorator can only work with django (or drf) view methods " \
-                    "with the \"request\" parameter as first or second argument. " \
-                    "Examples: def action  (request, *args, **kwargs) or def action(self, request, *args, **kwargs)")
-        
-        if not hasattr(view_method, 'kwargs'):
-            view_method.kwargs = {}
-        if not 'required_scopes' in view_method.kwargs:
-            view_method.kwargs['required_scopes'] = set()
-        view_method.kwargs['required_scopes'].update(scopes)
-        
-        @wraps(view_method)
-        def view_wrapper(*args, **kwargs):
-            
-            request = args[args_name.index('request')]
+    def wrapper_method(view_func):
+        @wraps(view_func)
+        def wrapper(self_or_request, *args, **kwargs):
+            # Determinar si es una CBV/ViewSet o una función
+            if hasattr(self_or_request, "method"):
+                # Caso de FBV, el primer argumento es `request`
+                request = self_or_request
+            else:
+                # Caso de CBV o ViewSet, `self` es el primer argumento y `request` el segundo
+                self = self_or_request
+                request = args[0]
 
+            # Agregar scopes requeridos
+            if not hasattr(view_func, 'kwargs'):
+                view_func.kwargs = {}
+            if 'required_scopes' not in view_func.kwargs:
+                view_func.kwargs['required_scopes'] = set()
+            view_func.kwargs['required_scopes'].update(scopes)
+
+            # Extraer y validar el token
             set_token_in_request(request)
-
-            try:
+            try:                
                 if request.token.has_expired():
                     logger.debug('[UserInfo] Token has expired: %s', request.access_token)
                     raise BearerTokenError('invalid_token')
 
-                if not view_method.kwargs['required_scopes'].issubset(set(request.token.scope)):
+                if not view_func.kwargs['required_scopes'].issubset(set(request.token.scope)):
                     logger.debug('[UserInfo] Missing openid scope.')
-                    raise BearerTokenError('insufficient_scope')
+
             except BearerTokenError as error:
                 response = HttpResponse(status=error.status)
                 response['WWW-Authenticate'] = 'error="{0}", error_description="{1}"'.format(
                     error.code, error.description)
                 return response
 
-            return view_method(*args, **kwargs)
+            # Ejecutar la vista original
+            if hasattr(self_or_request, "method"):
+                return view_func(request, *args, **kwargs)
+            else:
+                return view_func(self, request, *args, **kwargs)
 
-        return view_wrapper
+        return wrapper
 
     def wrapper(view):
+        # Caso CBV o ViewSet: Decorar métodos estándar (como `dispatch`)
         if inspect.isclass(view):
-            # level class attribute
-            for view_method in get_view_methods(view):
-                setattr(view, view_method[0], wrapper_method(view_method[1]))
-            # persist required scopes on class to provide annotation to derived view methods.
-            view.required_scopes = set(scopes)
-        elif callable(view) and hasattr(view, 'cls'):
-            # 'cls' attr signals that as_view() was called
-            for view_method in get_view_methods(view.cls):
-                setattr(view, view_method[0], wrapper_method(view_method[1]))
-        elif callable(view):
-            wrapper_method(view)
-        return view
+            for method_name in ["dispatch", "get", "post", "put", "delete"]:
+                if hasattr(view, method_name):
+                    original_method = getattr(view, method_name)
+                    decorated_method = wrapper_method(original_method)
+                    setattr(view, method_name, decorated_method)
+            return view
+
+        # Caso función o método
+        return wrapper_method(view)
 
     return wrapper

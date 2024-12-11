@@ -23,11 +23,13 @@ from oidc_provider.models import (
     Token,
 )
 from oidc_provider import settings
+from oidc_provider.lib.utils.common import get_client_model
 
 logger = logging.getLogger(__name__)
 
 
 class TokenEndpoint(object):
+    client_class = get_client_model()
 
     def __init__(self, request):
         self.request = request
@@ -54,7 +56,7 @@ class TokenEndpoint(object):
 
     def validate_params(self):
         try:
-            self.client = Client.objects.get(client_id=self.params['client_id'])
+            self.client = self.client_class.objects.get(client_id=self.params['client_id'])
         except Client.DoesNotExist:
             logger.debug('[Token] Client does not exist: %s', self.params['client_id'])
             raise TokenError('invalid_client')
