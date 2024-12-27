@@ -1,11 +1,11 @@
 from hashlib import sha224
 from random import randint
 from uuid import uuid4
-
+from django.utils.module_loading import import_string
 from django.forms import ModelForm
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-
+from django.conf import settings
 from oidc_provider.models import Code, Token, RSAKey, Scope
 from oidc_provider.lib.utils.common import get_client_model
 
@@ -47,7 +47,7 @@ class ClientForm(ModelForm):
         return secret
 
 
-@admin.register(get_client_model())
+
 class ClientAdmin(admin.ModelAdmin):
 
     fieldsets = [
@@ -72,30 +72,14 @@ class ClientAdmin(admin.ModelAdmin):
     search_fields = ['name']
     raw_id_fields = ['owner']
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
-        
-        defined_fields = set()
-        for fieldset in self.fieldsets:
-            defined_fields.update(fieldset[1]['fields'])
 
-        # Obtiene todos los campos del modelo retornado por get_client_model
-        dynamic_model_fields = set(field.name for field in self.model._meta.get_fields())
+client_admin_class_path = getattr(settings, 'OIDC_PROVIDER_CLIENT_ADMIN', None)
 
-        # Compara y revisa si hay campos adicionales en el modelo usado
-        additional_fields = dynamic_model_fields - defined_fields
+if not client_admin_class_path:
+    admin.site.register(get_client_model(), ClientAdmin)
 
-        # Excluye campos "clientscope" e "id" si existen
-        additional_fields = {
-            field for field in additional_fields
-            if field not in {'clientscope', 'id'}
-        }
 
-        # Incluye los campos adicionales
-        if additional_fields:
-            main_fields = list(self.fieldsets[0][1]['fields'])
-            self.fieldsets[0][1]['fields'] = tuple(main_fields + list(additional_fields))
 
 
 @admin.register(Code)
